@@ -69,6 +69,26 @@ Yes. Nothing proprietary leaves your Mac.
 - Prefer zero audio off-device? Swap `/voice` for a local STT (whisper.cpp) — the
   output side is unchanged.
 
+## A human voice (not robotic)
+
+The default is macOS `say` — zero install, but robotic. For a natural neural
+voice that's still 100% offline:
+
+```bash
+./setup-kokoro.sh                       # isolated uv venv + ~360MB model, one time
+# then in ~/.claude/voice/config.sh:
+#   VOICE_TTS=kokoro
+```
+
+[Kokoro](https://github.com/thewh1teagle/kokoro-onnx) runs locally on Apple
+Silicon in near real time. Pick a voice with `VOICE_KOKORO_VOICE` (`af_heart`,
+`am_adam`, `bf_emma`, …). If Kokoro isn't set up, it falls back to `say`.
+
+## Barge-in
+
+Sending a prompt (typed or dictated) stops any speech in progress — start your
+next instruction and Claude stops talking. `voice stop` cuts speech on demand.
+
 ## Portable vs. WezTerm
 
 - **Core** (any terminal): hooks + `say` + modes + queue. Works with no WezTerm;
@@ -81,8 +101,10 @@ Yes. Nothing proprietary leaves your Mac.
 |------|------|
 | `hooks/on-stop.sh` | speak or queue the 🔊 line when a turn ends |
 | `hooks/on-notification.sh` | cue / flag when Claude needs input |
-| `hooks/on-prompt.sh` | flag a tab "working" while it runs |
-| `bin/voice` | `auto` / `wait` / `toggle` / `status` / `drain` / `refocus` |
+| `hooks/on-prompt.sh` | flag a tab "working"; barge-in (stop speech on send) |
+| `bin/voice` | `auto` / `wait` / `toggle` / `status` / `stop` / `drain` / `refocus` |
+| `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice |
+| `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |
 | `wezterm/INTEGRATE.md` | 4 edits for an existing `wezterm.lua` |
 | `wezterm/voice.lua` | drop-in module for a fresh `wezterm.lua` |
 | `config/CLAUDE.snippet.md` | the 🔊 rule the installer appends |

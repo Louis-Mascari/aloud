@@ -15,23 +15,30 @@ case "${1:-status}" in
     fi ;;
   status) echo "voice mode: $(voice_mode)" ;;
 
+  # stop — cut off any speech immediately (barge-in when you start talking).
+  stop|shush) killall say 2>/dev/null; exit 0 ;;
+
   # drain [pane] — speak this pane's queued summary on demand, any mode. The
-  # "I'm ready" trigger bound to a key.
+  # "I'm ready" trigger bound to a key. Claims the queue atomically before
+  # speaking so it can't race the refocus poll into a double play.
   drain)
-    p="${2:-${WEZTERM_PANE:-}}"; q="$QUEUE_DIR/$p"
-    if [ -n "$p" ] && [ -s "$q" ]; then
-      say "$(cat "$q")"; : > "$q"; voice_clear_state "$p"
+    p="${2:-${WEZTERM_PANE:-}}"; q="$QUEUE_DIR/$p"; c="$q.speaking"
+    if [ -n "$p" ] && mv "$q" "$c" 2>/dev/null; then
+      voice_clear_state "$p"; voice_say_sync "$(cat "$c")"; rm -f "$c"
     else
-      say "Nothing queued."
+      voice_say_sync "Nothing queued."
     fi ;;
 
-  # refocus <pane> — auto-speak when you land on a flagged pane. Auto mode only,
-  # silent no-op when the queue is empty (fires ~1/sec from update-status).
+  # refocus <pane> — auto-speak when you land on a flagged pane. Auto mode only.
+  # The mv is the whole point: update-status fires ~1/sec, and say blocks for
+  # seconds, so clearing the queue only AFTER say lets the next tick replay it.
+  # Renaming first means the second tick's mv fails and it exits. (Atomic claim.)
   refocus)
     [ "$(voice_mode)" = auto ] || exit 0
-    p="${2:-}"; q="$QUEUE_DIR/$p"
-    [ -n "$p" ] && [ -s "$q" ] || exit 0
-    say "$(cat "$q")"; : > "$q"; voice_clear_state "$p" ;;
+    p="${2:-}"; q="$QUEUE_DIR/$p"; c="$q.speaking"
+    [ -n "$p" ] || exit 0
+    mv "$q" "$c" 2>/dev/null || exit 0
+    voice_clear_state "$p"; voice_say_sync "$(cat "$c")"; rm -f "$c" ;;
 
   *) echo "usage: voice {auto|wait|toggle|status|drain [pane]|refocus <pane>}"; exit 2 ;;
 esac

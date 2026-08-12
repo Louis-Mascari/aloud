@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# kokoro-say "text" [voice] [speed] — speak via local Kokoro neural TTS.
+# Run setup-kokoro.sh once first. Exits non-zero if not set up, so callers can
+# fall back to `say`.
+text="$1"; voice="${2:-af_heart}"; speed="${3:-1.0}"
+[ -z "$text" ] && exit 0
+K="${KOKORO_DIR:-$HOME/.claude/voice/kokoro}"
+py="$K/.venv/bin/python"
+[ -x "$py" ] && [ -f "$K/synth.py" ] || exit 1
+tmp="$(mktemp -t kokoro)"; wav="$tmp.wav"
+if "$py" "$K/synth.py" "$text" "$wav" "$voice" "$speed" >/dev/null 2>&1 && [ -s "$wav" ]; then
+  afplay "$wav"; rm -f "$tmp" "$wav"; exit 0
+fi
+rm -f "$tmp" "$wav"; exit 1

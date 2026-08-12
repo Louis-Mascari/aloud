@@ -41,8 +41,15 @@ else
   echo "CLAUDE.md: 🔊 rule appended"
 fi
 
+# ── starter config.sh ────────────────────────────────────────────────
+if [ ! -f "$HOME/.claude/voice/config.sh" ]; then
+  cp "$REPO/config/config.sample.sh" "$HOME/.claude/voice/config.sh"
+  echo "config: seeded ~/.claude/voice/config.sh"
+fi
+
 echo
 echo "Done. Next:"
 echo "  1. WezTerm users: apply wezterm/INTEGRATE.md (VOICE_BIN=$REPO/bin/voice), then reload."
 echo "  2. Start a NEW Claude Code session so the hooks load."
-echo "  3. Try: '$REPO/bin/voice' status   |   toggle with CMD+CTRL+V, drain with CMD+SHIFT+V"
+echo "  3. Human voice (optional): ./setup-kokoro.sh, then set VOICE_TTS=kokoro in ~/.claude/voice/config.sh"
+echo "  4. Try: '$REPO/bin/voice' status   |   toggle CMD+CTRL+V, drain CMD+SHIFT+V"

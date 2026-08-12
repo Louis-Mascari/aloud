@@ -8,12 +8,12 @@ voice_init
 # Non-consuming, works any time — the "what is this tab doing" answer.
 _recap() {
   local p="$1" task last st line
-  task="$(cat "$TASK_DIR/$p" 2>/dev/null)"
   last="$(cat "$LAST_DIR/$p" 2>/dev/null)"
-  st="$(cat "$STATE_DIR/$p" 2>/dev/null)"
   if [ -n "$last" ]; then
-    line="$last"
+    line="$last"                       # replay the message verbatim
   else
+    task="$(cat "$TASK_DIR/$p" 2>/dev/null)"
+    st="$(cat "$STATE_DIR/$p" 2>/dev/null)"
     case "$st" in
       working) line="still working";;
       input)   line="waiting for your input";;
@@ -21,8 +21,9 @@ _recap() {
       ready)   line="finished";;
       *)       line="nothing to report";;
     esac
+    [ -n "$task" ] && line="$task. $line"
   fi
-  [ -n "$task" ] && line="$task. $line"
+  voice_stop                           # cut any current playback so it restarts from the top
   voice_say_sync "$line"
 }
 

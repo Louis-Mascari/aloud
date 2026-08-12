@@ -56,7 +56,7 @@ A `✓` clears once you switch to a tab (seen); a `⏸` clears when Claude resum
 | Key | Does |
 |-----|------|
 | **CMD+SHIFT+V** | speak this pane's queued sentence now |
-| **CMD+SHIFT+R** | recap what this tab is doing (task + state) |
+| **CMD+SHIFT+R** | replay the last summary from the start (cuts current playback; no old audio continues) |
 | **CMD+SHIFT+J** | jump to the most urgent pane and speak its recap |
 | **CMD+.** | interrupt speech (barge-in) — talk over Claude |
 | **CMD+CTRL+V** | toggle auto ⇄ wait |

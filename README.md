@@ -5,8 +5,9 @@ reading walls of text. Local, work-safe, and quiet when you need it to be.
 
 - **You speak** with Claude Code's built-in `/voice` (push-to-talk).
 - **Claude speaks back** one plain sentence per turn. Never code, paths, or diffs.
-- **Many panes at once?** Only the pane you're looking at talks. The rest flag
-  their tab and wait. Switch to one and it speaks; or press a key when ready.
+- **Many panes at once?** Every tab shows a colored state glyph (working, done,
+  needs-you, error) and the status bar counts how many need you. One key jumps
+  to the most urgent and speaks it. Only the pane you're looking at talks.
 - **In a meeting?** One toggle silences everything. Tabs still flag quietly.
 
 ## How it works
@@ -37,11 +38,26 @@ code is never read aloud — nothing to strip, nothing to summarize.
 Toggle with **CMD+CTRL+V** (or `bin/voice toggle`). Entering *wait* makes only a
 quiet blip, safe mid-call.
 
+## States at a glance
+
+Each **inactive** tab shows one colored glyph (the active tab you can already see):
+
+| Glyph | Color | State | Needs you |
+|-------|-------|-------|-----------|
+| ◍ | blue | working | no |
+| ✓ | green | done | review / next |
+| ⏸ | amber | waiting on input | yes |
+| ✗ | red | error | yes, now |
+
+The status bar shows an aggregate like `✗1 ⏸2 ✓3` — how many panes need you, most urgent first.
+
 ## Keys
 
 | Key | Does |
 |-----|------|
 | **CMD+SHIFT+V** | speak this pane's queued sentence now |
+| **CMD+SHIFT+R** | recap what this tab is doing (task + state) |
+| **CMD+SHIFT+J** | jump to the most urgent pane and speak its recap |
 | **CMD+CTRL+V** | toggle auto ⇄ wait |
 | `/voice` (in Claude Code) | push-to-talk dictation |
 
@@ -121,8 +137,10 @@ next instruction and Claude stops talking. `voice stop` cuts speech on demand.
 |------|------|
 | `hooks/on-stop.sh` | speak or queue the 🔊 line when a turn ends |
 | `hooks/on-notification.sh` | cue / flag when Claude needs input |
-| `hooks/on-prompt.sh` | flag a tab "working"; barge-in (stop speech on send) |
-| `bin/voice` | `auto` / `wait` / `toggle` / `status` / `stop` / `drain` / `refocus` |
+| `hooks/on-prompt.sh` | flag "working", record the task; barge-in on send |
+| `hooks/on-stopfailure.sh` | flag "error" when a turn fails |
+| `hooks/on-session.sh` | clear a pane's files on start/end (no stale glyphs) |
+| `bin/voice` | `auto`/`wait`/`toggle`/`status`/`stop`/`drain`/`recap`/`jump`/`attention` |
 | `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice |
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |
 | `wezterm/INTEGRATE.md` | 4 edits for an existing `wezterm.lua` |

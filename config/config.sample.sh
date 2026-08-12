@@ -18,4 +18,5 @@
 # --- Cue sounds (path to any .aiff/.wav, or "" to silence one) ----------------
 # VOICE_SOUND_READY="/System/Library/Sounds/Glass.aiff"
 # VOICE_SOUND_INPUT="/System/Library/Sounds/Ping.aiff"
+# VOICE_SOUND_ERROR="/System/Library/Sounds/Basso.aiff"
 # VOICE_SOUND_WAIT="/System/Library/Sounds/Submarine.aiff"

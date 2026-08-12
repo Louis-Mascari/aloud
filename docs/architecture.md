@@ -1,57 +1,70 @@
 # Architecture
 
-Everything is coordinated through small files under `~/.claude/voice/`, because
-Claude Code hooks run **without a controlling terminal** — they can't emit the
-OSC user-var escape that `statusline.sh` uses, but they can write files, and
-WezTerm's Lua can read them.
+Everything is coordinated through small files under `~/.claude/voice/`. Claude
+Code hooks run **without a controlling terminal**, so they can't set OSC user
+vars the way `statusline.sh` does — but they can write files, and WezTerm's Lua
+reads them each render.
 
 ```
 ~/.claude/voice/
-  mode              auto | wait          (global; one toggle)
-  queue/<pane_id>   the 🔊 sentence(s) waiting to be spoken for that pane
-  state/<pane_id>   working | ready | input   (drives the tab glyph)
+  mode              auto | wait                        (global; one toggle)
+  state/<pane_id>   working | ready | input | error    (tab glyph + badge)
+  queue/<pane_id>   the 🔊 sentence waiting to be spoken for that pane
+  task/<pane_id>    short name of what the session is doing (from the prompt)
+  last/<pane_id>    last spoken summary, kept for on-demand recap
 ```
+
+Files are written atomically (temp + rename) so a WezTerm reader never sees a
+torn or empty file. WezTerm reuses a `pane_id` after a pane closes, so
+`SessionStart`/`SessionEnd` wipe a pane's files — otherwise a reused id could show
+a stale glyph or speak a dead session's summary.
 
 ## Events → state
 
 ```mermaid
 flowchart TD
-    P["UserPromptSubmit hook"] -->|write| SW["state = working"]
-    S["Stop hook<br/>(extracts the 🔊 line)"] --> F{focused &amp; auto?}
-    F -->|yes| SAY1(["say now, clear state"])
-    F -->|no| RQ["append queue/&lt;pane&gt;<br/>state = ready<br/>ping (auto only)"]
-    N["Notification hook<br/>(needs input)"] --> F2{focused &amp; auto?}
-    F2 -->|yes| SAY2(["say 'Claude needs you'"])
-    F2 -->|no| RI["state = input<br/>ping (auto only)"]
+    U["UserPromptSubmit"] --> W["state = working<br/>task = the prompt"]
+    S["Stop (last 🔊 line)"] --> R["queue += summary<br/>last = summary<br/>state = ready"]
+    SF["StopFailure"] --> E["state = error"]
+    N["Notification"] --> NB{"blocking?"}
+    NB -->|"permission / elicitation / needs-input"| I["state = input"]
+    NB -->|"idle"| R
+    SE["SessionStart / SessionEnd"] --> C["clear this pane's files"]
 ```
 
 ## WezTerm reads that state
 
 ```mermaid
 flowchart LR
-    subgraph render["format-tab-title (per tab)"]
-        R["inactive tab?"] -->|read state/&lt;pane&gt;| G["prepend ◍ / 🔔 / ⏳"]
+    subgraph tab["format-tab-title (inactive tabs)"]
+        G["state file becomes a<br/>colored glyph ◍ ✓ ⏸ ✗"]
     end
-    subgraph tick["update-status (~1/s, focused window)"]
-        T["queue/&lt;active_pane&gt; has bytes?"] -->|yes| RF["voice refocus &lt;pane&gt;"]
-        RF --> SP(["say it, empty the queue"])
+    subgraph bar["update-status (about 1/sec)"]
+        B["count states into a<br/>badge ✗ ⏸ ✓"]
+        F{"focused pane<br/>has a queue?"} -->|"yes, auto mode"| SP(["speak it, clear queue"])
     end
-    K["CMD+SHIFT+V"] --> DR["voice drain &lt;pane&gt;"] --> SP2(["say it, empty the queue"])
+    K1["CMD+SHIFT+V drain"] --> SP
+    K2["CMD+SHIFT+R recap"] --> RC(["say task + last summary"])
+    K3["CMD+SHIFT+J jump"] --> J["focus most-urgent pane"] --> RC
 ```
 
-## Why focus is decided in the hook, not WezTerm
+## Who decides "speak vs. queue"
 
-The Stop hook knows its own pane via `$WEZTERM_PANE`, and asks
-`wezterm cli list-clients` for `focused_pane_id`. Equal → you're looking at it →
-speak. That keeps the "speak vs. queue" decision in one place, and the WezTerm
-side only has to render state and drain on return.
+Every finish just queues the summary and flags the tab. WezTerm's `update-status`
+poll, guarded by `window:is_focused()`, speaks the focused pane's queue within
+~1s. The decision lives on the WezTerm side because only it reliably knows which
+pane is front-most: a hook can lose `$WEZTERM_PANE` under tmux/ssh and cannot
+disambiguate multiple windows.
 
-Glyphs self-clear: `format-tab-title` shows the glyph **only on inactive tabs**,
-so focusing a tab hides it immediately; `refocus`/`drain` then delete the state
-and queue files.
+## Triage across many sessions
+
+The badge ranks by urgency (`error > input > ready`). `CMD+SHIFT+J` (`voice jump`)
+finds the highest-severity pane, focuses it, and speaks its recap, so you never
+scan to find the worst one. `CMD+SHIFT+R` (`voice recap`) answers "what is this
+tab doing" for the current pane on demand, from its `task` and `last` files.
 
 ## Portability
 
-The hooks degrade cleanly. With no `$WEZTERM_PANE` (not under WezTerm),
-`voice_is_focused` returns true, so a single-terminal user just hears every
-summary — no glyphs, no focus logic, still no code read aloud.
+The hooks degrade cleanly. With no `$WEZTERM_PANE` and no WezTerm, everything
+still speaks (no glyphs, no focus logic). Missing `say` / `afplay` / Kokoro just
+no-op; only `jq` is required, and its absence is reported once.

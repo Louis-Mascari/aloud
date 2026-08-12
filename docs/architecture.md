@@ -44,7 +44,7 @@ flowchart LR
         F{"focused pane:<br/>queue or done?"} -->|"speak (auto), mark seen"| SP(["clear queue + ready glyph"])
     end
     K1["CMD+SHIFT+V drain"] --> SP
-    K2["CMD+SHIFT+R recap"] --> RC(["say task + last summary"])
+    K2["CMD+SHIFT+R recap"] --> RC(["replay last summary from the top"])
     K3["CMD+SHIFT+J jump"] --> J["focus most-urgent pane"] --> RC
 ```
 
@@ -54,7 +54,9 @@ Every finish just queues the summary and flags the tab. WezTerm's `update-status
 poll, guarded by `window:is_focused()`, speaks the focused pane's queue within
 ~1s. The decision lives on the WezTerm side because only it reliably knows which
 pane is front-most: a hook can lose `$WEZTERM_PANE` under tmux/ssh and cannot
-disambiguate multiple windows.
+disambiguate multiple windows. Switching panes runs `voice switched`, which stops
+the pane you left before speaking the new one. `VOICE_AUTO_SPEAK=false` disables
+all auto-speak, so nothing plays until you press a key.
 
 ## Triage across many sessions
 
@@ -63,8 +65,8 @@ The badge counts only what needs an action (`error`, `input`) **on live panes**
 `ready` `✓` clears the moment you focus the tab; an `input` `⏸` clears when Claude
 resumes work — a `PreToolUse` hook sets `working` on each tool run, so approving a
 permission flips the tab out of "needs you" as soon as the next tool executes. `CMD+SHIFT+J`
-(`voice jump`) focuses the highest-severity pane and speaks its recap; `CMD+SHIFT+R`
-(`voice recap`) answers "what is this tab doing" from its `task` and `last` files.
+(`voice jump`) focuses the highest-severity pane and reads it; `CMD+SHIFT+R`
+(`voice recap`) replays the last summary from the top, cutting any current playback.
 
 ## Speech
 

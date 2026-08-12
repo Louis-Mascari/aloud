@@ -22,13 +22,32 @@ local function voice_state(pane_id)
   if not f then return nil end
   local s = f:read 'l'; f:close(); return s
 end
-local function voice_badge_cells()
-  local n = { error = 0, input = 0, ready = 0 }
+local VOICE_LAST_FOCUSED = {}  -- window_id -> last focused pane_id, to detect switches
+local function voice_live_panes()
+  local live = {}
+  local ok = pcall(function()
+    for _, w in ipairs(wezterm.mux.all_windows()) do
+      for _, t in ipairs(w:tabs()) do
+        for _, p in ipairs(t:panes()) do live[tostring(p:pane_id())] = true end
+      end
+    end
+  end)
+  return ok and live or nil
+end
+local function voice_badge_cells()  -- counts action states on live panes; prunes orphans
+  local n = { error = 0, input = 0 }
+  local live = voice_live_panes()
   local ok, entries = pcall(wezterm.read_dir, VOICE_STATE_DIR)
   if ok and entries then
-    for _, p in ipairs(entries) do
-      local f = io.open(p, 'r')
-      if f then local s = f:read 'l'; f:close(); if n[s] ~= nil then n[s] = n[s] + 1 end end
+    for _, path in ipairs(entries) do
+      local id = path:match '([^/]+)$'
+      if id and id:match '^%d+$' then
+        if live and not live[id] then os.remove(path)
+        else
+          local f = io.open(path, 'r')
+          if f then local s = f:read 'l'; f:close(); if n[s] ~= nil then n[s] = n[s] + 1 end end
+        end
+      end
     end
   end
   local cells = {}
@@ -38,7 +57,7 @@ local function voice_badge_cells()
       table.insert(cells, { Text = ' ' .. VOICE_GLYPH[st].g .. n[st] })
     end
   end
-  add 'error'; add 'input'   -- only what needs an action; "done" shows per-tab, not in the count
+  add 'error'; add 'input'
   return cells
 end
 ```
@@ -57,13 +76,19 @@ local vg = tab.is_active and nil or VOICE_GLYPH[voice_state(tab.active_pane.pane
 local vb = voice_badge_cells()
 window:set_left_status(#vb > 0 and wezterm.format(vb) or '')
 if window:is_focused() then
+  local wid = window:window_id()
   local pid = pane:pane_id()
-  local trigger = voice_state(pid) == 'ready'   -- landed on a done tab: mark it seen
-  if not trigger then
-    local qf = io.open(wezterm.home_dir .. '/.claude/voice/queue/' .. tostring(pid), 'r')
-    if qf then local sz = qf:seek 'end'; qf:close(); if sz and sz > 0 then trigger = true end end
+  if VOICE_LAST_FOCUSED[wid] ~= pid then          -- switched panes: stop the one you left, speak this one
+    VOICE_LAST_FOCUSED[wid] = pid
+    wezterm.background_child_process { VOICE_BIN, 'switched', tostring(pid) }
+  else
+    local trigger = voice_state(pid) == 'ready'   -- done tab you're already on: mark it seen
+    if not trigger then
+      local qf = io.open(wezterm.home_dir .. '/.claude/voice/queue/' .. tostring(pid), 'r')
+      if qf then local sz = qf:seek 'end'; qf:close(); if sz and sz > 0 then trigger = true end end
+    end
+    if trigger then wezterm.background_child_process { VOICE_BIN, 'refocus', tostring(pid) } end
   end
-  if trigger then wezterm.background_child_process { VOICE_BIN, 'refocus', tostring(pid) } end
 end
 ```
 
@@ -71,11 +96,11 @@ end
 
 ```lua
 for _, b in ipairs {
-  { 'v', 'CMD|SHIFT', 'drain', true },   -- speak this pane's queued summary
-  { 'r', 'CMD|SHIFT', 'recap', true },   -- say what this tab is doing
-  { 'j', 'CMD|SHIFT', 'jump', false },   -- jump to the most urgent pane + recap
+  { 'v', 'CMD|SHIFT', 'drain', true },   -- play a background tab's pending summary
+  { 'r', 'CMD|SHIFT', 'recap', true },   -- replay the last summary from the start
+  { 'j', 'CMD|SHIFT', 'jump', false },   -- jump to the most urgent pane + read it
   { '.', 'CMD', 'stop', false },         -- interrupt speech (barge-in)
-  { 'v', 'CMD|CTRL', 'toggle', false },  -- auto <-> wait
+  { 'v', 'CMD|CTRL', 'toggle', false },  -- wait mode on/off
 } do
   local key, mods, sub, wp = b[1], b[2], b[3], b[4]
   table.insert(config.keys, { key = key, mods = mods,
@@ -84,6 +109,11 @@ for _, b in ipairs {
       else wezterm.background_child_process { VOICE_BIN, sub } end
     end) })
 end
+-- CMD+SHIFT+/ shows a quick reference (full list: `voice help`)
+table.insert(config.keys, { key = '/', mods = 'CMD|SHIFT',
+  action = wezterm.action_callback(function(window)
+    window:toast_notification('claude-voice', 'V drain · R replay · J jump · ⌘. stop · ⌃⌘V mode\nCLI: voice help', nil, 8000)
+  end) })
 ```
 
 Validate with: `wezterm --config-file ~/.wezterm.lua ls-fonts >/dev/null && echo ok`

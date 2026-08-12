@@ -58,12 +58,22 @@ load. That's it.
 
 Needs `jq` and macOS `say` (both standard/`brew install jq`).
 
+## Try it (30 seconds)
+
+In a Claude Code pane:
+
+1. Run `/voice` once to enable push-to-talk dictation.
+2. Ask Claude anything. When it finishes, you hear **one spoken sentence** — never the code.
+3. Open a second tab, start something there, switch away. When it finishes, that tab
+   shows **🔔** and pings. Switch back and it speaks. That's the async loop.
+4. Heading into a meeting? **CMD+CTRL+V** silences everything (tabs still flag quietly). Toggle back after.
+
 ## Is it safe for work?
 
 Yes. Nothing proprietary leaves your Mac.
 
-- **Output** (`say`) is macOS's offline voice. Your code, diffs, and the spoken
-  sentence are all synthesized locally.
+- **Output** is synthesized locally — macOS `say` or the Kokoro neural voice,
+  both fully offline. Your code, diffs, and the spoken sentence never leave the Mac.
 - **Input** (`/voice`) sends *audio of your voice* to Anthropic's speech service
   only — the same vendor already handling your Claude sessions. No third party.
 - Prefer zero audio off-device? Swap `/voice` for a local STT (whisper.cpp) — the
@@ -94,6 +104,16 @@ next instruction and Claude stops talking. `voice stop` cuts speech on demand.
 - **Core** (any terminal): hooks + `say` + modes + queue. Works with no WezTerm;
   "which pane finished" falls back to a ping.
 - **WezTerm layer** (opt-in): the tab glyph and speak-on-return.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| Nothing spoken | `bin/voice status`; make sure the reply ended with a 🔊 line; confirm hooks loaded (new session if needed). |
+| No 🔔 on background tabs | WezTerm didn't get the edits — apply `wezterm/INTEGRATE.md` and reload the config. |
+| Voice still robotic | You're on `say`. Run `./setup-kokoro.sh`, then set `VOICE_TTS=kokoro`. |
+| Speaks from the wrong pane | Launch Claude Code inside WezTerm so `$WEZTERM_PANE` reaches the hooks. |
+| Speech won't stop | Send a prompt (barge-in) or run `voice stop`. |
 
 ## Files
 

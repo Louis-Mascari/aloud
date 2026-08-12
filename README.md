@@ -60,6 +60,7 @@ A `✓` clears once you switch to a tab (seen); a `⏸` clears when Claude resum
 | **CMD+SHIFT+J** | jump to the most urgent pane and speak its recap |
 | **CMD+.** | interrupt speech (barge-in) — talk over Claude |
 | **CMD+CTRL+V** | toggle auto ⇄ wait |
+| **CMD+SHIFT+/** | quick key/command reference (`voice help` for the full list) |
 | `/voice` (in Claude Code) | push-to-talk dictation |
 
 ## Install (macOS)
@@ -159,6 +160,8 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 |-----|------|
 | `VOICE_TTS` | `say` (built-in) or `kokoro` (neural) |
 | `VOICE_KOKORO_VOICE` | Kokoro voice — `voice voices` to audition, `voice use <v>` to set |
+| `VOICE_KOKORO_SPEED` | speaking speed, 1.0 = normal — or `voice speed 1.2` |
+| `VOICE_AUTO_SPEAK` | `true` (speak on switch/finish) or `false` (silent; `voice autospeak off`) |
 | `VOICE_SAY_VOICE` / `VOICE_SAY_RATE` | macOS `say` voice + words/min |
 | `VOICE_SPEAK_CMD` / `VOICE_PLAY_CMD` | force the audio backend (Linux/Windows) |
 | `VOICE_SOUND_*` | cue sounds (path, or `""` to silence one) |

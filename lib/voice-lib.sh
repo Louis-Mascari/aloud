@@ -22,6 +22,9 @@ KOKORO_SAY="${KOKORO_SAY:-$_VOICE_LIB_DIR/../bin/kokoro-say}"
 VOICE_KOKORO_VOICE="${VOICE_KOKORO_VOICE:-af_heart}"
 VOICE_KOKORO_SPEED="${VOICE_KOKORO_SPEED:-1.0}"
 
+# true = speak on switch/finish; false = silent (never auto-speaks; you press a key).
+VOICE_AUTO_SPEAK="${VOICE_AUTO_SPEAK:-true}"
+
 # Cue sounds. Only "needs you" states make sound; done is a soft blip.
 VOICE_SOUND_READY="${VOICE_SOUND_READY:-/System/Library/Sounds/Glass.aiff}"
 VOICE_SOUND_INPUT="${VOICE_SOUND_INPUT:-/System/Library/Sounds/Ping.aiff}"

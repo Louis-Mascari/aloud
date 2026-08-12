@@ -6,7 +6,8 @@
 # kokoro = local neural voice (run ./setup-kokoro.sh first; 100% offline).
 # VOICE_TTS=kokoro
 # VOICE_KOKORO_VOICE=af_heart   # af_sarah, am_adam, am_michael, bf_emma, bm_george, ...
-# VOICE_KOKORO_SPEED=1.0
+# VOICE_KOKORO_SPEED=1.0        # or: voice speed 1.2
+# VOICE_AUTO_SPEAK=true         # false = never auto-speaks; press a key to hear (voice autospeak off)
 
 # --- Audio backend (auto-detected from PATH; set to force or on Windows) -------
 # speak: say (macOS) / spd-say / espeak-ng / espeak; play: afplay / paplay / aplay / ...

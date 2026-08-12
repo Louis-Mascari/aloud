@@ -54,6 +54,47 @@ case "${1:-status}" in
     fi
     echo "voice set to $v"
     [ -x "$KOKORO_SAY" ] && "$KOKORO_SAY" "This is now your voice." "$v" 1.0 ;;
+
+  # speed <mult> — set speaking speed (1.0 = normal), both backends, and preview.
+  speed)
+    n="${2:-}"; [ -n "$n" ] || { echo "usage: voice speed <0.5-2.0>  (1.0 = normal)"; exit 2; }
+    cfg="$VOICE_DIR/config.sh"; touch "$cfg"
+    rate=$(awk "BEGIN{printf \"%d\", $n*175}")
+    for kv in "VOICE_KOKORO_SPEED=$n" "VOICE_SAY_RATE=$rate"; do
+      k="${kv%%=*}"
+      if grep -q "^$k=" "$cfg"; then sed -i.bak "s#^$k=.*#$kv#" "$cfg" && rm -f "$cfg.bak"
+      else printf '%s\n' "$kv" >> "$cfg"; fi
+    done
+    echo "speed $n (kokoro), $rate wpm (say)"
+    [ -x "$KOKORO_SAY" ] && "$KOKORO_SAY" "This is the new speaking speed." "$VOICE_KOKORO_VOICE" "$n" ;;
+
+  # autospeak [on|off] — on: speak on switch/finish; off: silent, press a key to hear.
+  autospeak)
+    cfg="$VOICE_DIR/config.sh"; touch "$cfg"
+    case "${2:-toggle}" in on) new=true;; off) new=false;; *) [ "$VOICE_AUTO_SPEAK" = true ] && new=false || new=true;; esac
+    if grep -q '^VOICE_AUTO_SPEAK=' "$cfg"; then sed -i.bak "s/^VOICE_AUTO_SPEAK=.*/VOICE_AUTO_SPEAK=$new/" "$cfg" && rm -f "$cfg.bak"
+    else printf '\nVOICE_AUTO_SPEAK=%s\n' "$new" >> "$cfg"; fi
+    [ "$new" = true ] && echo "auto-speak ON (speaks on switch/finish)" || echo "auto-speak OFF (silent; press drain/replay to hear)" ;;
+
+  # help — one-screen cheatsheet.
+  help)
+    cat <<'H'
+claude-voice — keys (WezTerm) and commands
+  CMD+SHIFT+V  drain: speak the unheard queued summary
+  CMD+SHIFT+R  replay the last summary from the start
+  CMD+SHIFT+J  jump to the most urgent pane + recap
+  CMD+SHIFT+/  this help
+  CMD+.        stop / interrupt speech
+  CMD+CTRL+V   toggle auto (speak) / wait (silent) mode
+
+  voice voices [af|am|bf|bm]   audition voices (space next, p back, q quit)
+  voice use <voice>            set the voice
+  voice speed <0.5-2.0>        set speaking speed
+  voice autospeak [on|off]     speak on switch/finish, or stay silent
+  voice status | stop | drain | recap | jump
+  config: ~/.claude/voice/config.sh
+H
+    ;;
   stop|shush) voice_stop; exit 0 ;;
 
   # drain [pane] — speak this pane's queued summary, else recap it. Distinct claim
@@ -69,6 +110,7 @@ case "${1:-status}" in
   # refocus <pane> — auto-speak a queued summary when you land on a pane (auto only).
   refocus)
     p="${2:-}"; [ -n "$p" ] || exit 0
+    [ "$VOICE_AUTO_SPEAK" = true ] || exit 0    # silent mode: leave the ✓ for on-demand
     # you're looking at this pane now, so a "done" glyph is seen — drop it.
     [ "$(cat "$STATE_DIR/$p" 2>/dev/null)" = ready ] && voice_clear_state "$p"
     [ "$(voice_mode)" = auto ] || exit 0
@@ -82,6 +124,7 @@ case "${1:-status}" in
     p="${2:-}"
     voice_stop
     [ -n "$p" ] || exit 0
+    [ "$VOICE_AUTO_SPEAK" = true ] || exit 0    # silent mode: just stop the pane you left
     [ "$(cat "$STATE_DIR/$p" 2>/dev/null)" = ready ] && voice_clear_state "$p"
     [ "$(voice_mode)" = auto ] || exit 0
     q="$QUEUE_DIR/$p"; c="$q.speaking"
@@ -118,5 +161,5 @@ case "${1:-status}" in
     [ "$e" -gt 0 ] && _a "✗$e"; [ "$i" -gt 0 ] && _a "⏸$i"; [ "$r" -gt 0 ] && _a "✓$r"
     printf '%s\n' "$out" ;;
 
-  *) echo "usage: voice {auto|wait|toggle|status|stop|voices [prefix]|use <voice>|drain|recap|jump|attention}"; exit 2 ;;
+  *) echo "usage: voice {help|voices|use|speed|autospeak|auto|wait|toggle|status|stop|drain|recap|jump|attention}"; exit 2 ;;
 esac

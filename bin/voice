@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# voice — control and trigger claude-voice. Used by you (auto|wait|toggle|status),
+# by the WezTerm drain keybind (drain), and by the update-status handler (refocus).
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; . "$HERE/../lib/voice-lib.sh"
+voice_init
+
+case "${1:-status}" in
+  auto)   echo auto > "$MODE_FILE"; echo "voice: auto — speaks in the focused pane" ;;
+  wait)   echo wait > "$MODE_FILE"; echo "voice: wait — silent; press the drain key to hear a pane" ;;
+  toggle)
+    if [ "$(voice_mode)" = auto ]; then
+      echo wait > "$MODE_FILE"; voice_ping "$VOICE_SOUND_WAIT"   # quiet: safe mid-meeting
+    else
+      echo auto > "$MODE_FILE"; voice_say "Voice on"
+    fi ;;
+  status) echo "voice mode: $(voice_mode)" ;;
+
+  # drain [pane] — speak this pane's queued summary on demand, any mode. The
+  # "I'm ready" trigger bound to a key.
+  drain)
+    p="${2:-${WEZTERM_PANE:-}}"; q="$QUEUE_DIR/$p"
+    if [ -n "$p" ] && [ -s "$q" ]; then
+      say "$(cat "$q")"; : > "$q"; voice_clear_state "$p"
+    else
+      say "Nothing queued."
+    fi ;;
+
+  # refocus <pane> — auto-speak when you land on a flagged pane. Auto mode only,
+  # silent no-op when the queue is empty (fires ~1/sec from update-status).
+  refocus)
+    [ "$(voice_mode)" = auto ] || exit 0
+    p="${2:-}"; q="$QUEUE_DIR/$p"
+    [ -n "$p" ] && [ -s "$q" ] || exit 0
+    say "$(cat "$q")"; : > "$q"; voice_clear_state "$p" ;;
+
+  *) echo "usage: voice {auto|wait|toggle|status|drain [pane]|refocus <pane>}"; exit 2 ;;
+esac

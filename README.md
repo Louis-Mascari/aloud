@@ -116,8 +116,8 @@ voice that's still 100% offline:
 [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) runs locally on Apple
 Silicon. A warm daemon keeps the model loaded and speaks sentence-by-sentence, so
 audio starts in about a second instead of after the whole summary synthesizes.
-Audition all 54 voices with **`voice voices`** — **→/←** skip forward/back, **q**
-quits — or narrow to a group (`voice voices af` / `am` / `bf` / `bm`). Lock one in
+Audition all 54 voices with **`voice voices`** — **space** next, **p** back, **q**
+quit — or narrow to a group (`voice voices af` / `am` / `bf` / `bm`). Lock one in
 with **`voice use bf_emma`**. If Kokoro isn't set up, it falls back to `say`.
 
 ## Barge-in

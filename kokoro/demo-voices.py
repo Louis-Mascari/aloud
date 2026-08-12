@@ -39,27 +39,22 @@ import termios, tty
 
 
 def read_key(timeout):
+    # Single characters only — resilient across terminals. Escape sequences
+    # (arrow keys) are drained and ignored rather than parsed unreliably.
     if not select.select([sys.stdin], [], [], timeout)[0]:
         return None
     c = sys.stdin.read(1)
-    if c == "\x1b":  # arrows are ESC [ X or ESC O X; read the follow bytes, key on the last
-        seq = ""
-        for _ in range(2):
-            if select.select([sys.stdin], [], [], 0.05)[0]:
-                seq += sys.stdin.read(1)
-            else:
-                break
-        last = seq[-1:]
-        if last in ("C", "B"): return "next"   # right / down
-        if last in ("D", "A"): return "prev"   # left / up
+    if c == "\x1b":
+        while select.select([sys.stdin], [], [], 0.01)[0]:
+            sys.stdin.read(1)
         return None
     if c in ("q", "\x03"): return "quit"
-    if c in (" ", "n", "j", "\r"): return "next"
-    if c in ("p", "k"): return "prev"
+    if c in (" ", "n", "\r"): return "next"
+    if c in ("p", "b"): return "prev"
     return None
 
 
-print(f"{len(voices)} voices.  →/space next   ←/p back   q quit.  Set one with: voice use <name>\n")
+print(f"{len(voices)} voices.  space next   p back   q quit.  Set one with: voice use <name>\n")
 fd = sys.stdin.fileno()
 old = termios.tcgetattr(fd)
 try:

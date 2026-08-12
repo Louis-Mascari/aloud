@@ -19,7 +19,7 @@ flowchart LR
     end
     CC -->|Stop hook| Q{"Are you<br/>looking at<br/>this pane?"}
     Q -->|yes, auto mode| SAY(["🔊 say it now"])
-    Q -->|no| FLAG["queue the sentence<br/>+ flag the tab 🔔<br/>+ soft ping"]
+    Q -->|no| FLAG["queue the sentence<br/>+ flag the tab ✓<br/>+ soft ping"]
     FLAG -.->|you switch to the tab| SAY
     FLAG -.->|or press CMD+SHIFT+V| SAY
 ```
@@ -88,7 +88,7 @@ In a Claude Code pane:
 1. Run `/voice` once to enable push-to-talk dictation.
 2. Ask Claude anything. When it finishes, you hear **one spoken sentence** — never the code.
 3. Open a second tab, start something there, switch away. When it finishes, that tab
-   shows **🔔** and pings. Switch back and it speaks. That's the async loop.
+   shows **✓** and pings. Switch back and it speaks. That's the async loop.
 4. Heading into a meeting? **CMD+CTRL+V** silences everything (tabs still flag quietly). Toggle back after.
 
 ## Is it safe for work?
@@ -146,7 +146,7 @@ stable contract), and audio goes through a detected backend you can override.
 | Symptom | Fix |
 |---------|-----|
 | Nothing spoken | `bin/voice status`; make sure the reply ended with a 🔊 line; confirm hooks loaded (new session if needed). |
-| No 🔔 on background tabs | WezTerm didn't get the edits — apply `wezterm/INTEGRATE.md` and reload the config. |
+| No glyph on background tabs | WezTerm didn't get the edits — apply `wezterm/INTEGRATE.md` and reload the config. |
 | Voice still robotic | You're on `say`. Run `./setup-kokoro.sh`, then set `VOICE_TTS=kokoro`. |
 | Speaks from the wrong pane | Launch Claude Code inside WezTerm so `$WEZTERM_PANE` reaches the hooks. |
 | Speech won't stop | Send a prompt (barge-in) or run `voice stop`. |

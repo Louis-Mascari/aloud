@@ -37,11 +37,11 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph tab["format-tab-title (inactive tabs)"]
-        G["state file becomes a<br/>colored glyph ◍ ✓ ⏸ ✗"]
+        G["state file becomes a<br/>colored glyph ✓ ⏸ ✗"]
     end
     subgraph bar["update-status (about 1/sec)"]
-        B["count states into a<br/>badge ✗ ⏸ ✓"]
-        F{"focused pane<br/>has a queue?"} -->|"yes, auto mode"| SP(["speak it, clear queue"])
+        B["count action states into<br/>a badge ✗ ⏸"]
+        F{"focused pane:<br/>queue or done?"} -->|"speak (auto), mark seen"| SP(["clear queue + ready glyph"])
     end
     K1["CMD+SHIFT+V drain"] --> SP
     K2["CMD+SHIFT+R recap"] --> RC(["say task + last summary"])
@@ -58,10 +58,19 @@ disambiguate multiple windows.
 
 ## Triage across many sessions
 
-The badge ranks by urgency (`error > input > ready`). `CMD+SHIFT+J` (`voice jump`)
-finds the highest-severity pane, focuses it, and speaks its recap, so you never
-scan to find the worst one. `CMD+SHIFT+R` (`voice recap`) answers "what is this
-tab doing" for the current pane on demand, from its `task` and `last` files.
+The badge counts only what needs an action (`error`, `input`), so a non-empty
+badge always means "act now". A `ready` (done) tab shows a `✓` that clears the
+moment you focus it — so `✓` means "done and not yet seen". `CMD+SHIFT+J`
+(`voice jump`) focuses the highest-severity pane and speaks its recap; `CMD+SHIFT+R`
+(`voice recap`) answers "what is this tab doing" from its `task` and `last` files.
+
+## Speech
+
+`say` speaks synchronously. Kokoro runs as a warm daemon (`kokoro/daemon.py`, a
+unix socket) that loads the model once and plays **sentence by sentence**, so
+audio starts after the first short sentence rather than after the whole summary.
+`CMD+.` (`voice stop`) touches an interrupt file the daemon checks between
+sentences, so barge-in cuts a summary mid-way.
 
 ## Portability
 

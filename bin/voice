@@ -33,7 +33,10 @@ case "${1:-status}" in
     if [ "$(voice_mode)" = auto ]; then echo wait > "$MODE_FILE"; voice_ping "$VOICE_SOUND_WAIT"
     else echo auto > "$MODE_FILE"; voice_say "Voice on"; fi ;;
   status) echo "voice mode: $(voice_mode)" ;;
-  stop|shush) killall say 2>/dev/null; killall afplay 2>/dev/null; exit 0 ;;
+  stop|shush)
+    killall say 2>/dev/null; killall afplay 2>/dev/null
+    touch "$VOICE_DIR/kokoro/interrupt" 2>/dev/null   # signals the Kokoro daemon to stop mid-summary
+    exit 0 ;;
 
   # drain [pane] — speak this pane's queued summary, else recap it. Distinct claim
   # file so it never contends with the refocus poll's rename.
@@ -47,11 +50,13 @@ case "${1:-status}" in
 
   # refocus <pane> — auto-speak a queued summary when you land on a pane (auto only).
   refocus)
+    p="${2:-}"; [ -n "$p" ] || exit 0
+    # you're looking at this pane now, so a "done" glyph is seen — drop it.
+    [ "$(cat "$STATE_DIR/$p" 2>/dev/null)" = ready ] && voice_clear_state "$p"
     [ "$(voice_mode)" = auto ] || exit 0
-    p="${2:-}"; q="$QUEUE_DIR/$p"; c="$q.speaking"
-    [ -n "$p" ] || exit 0
+    q="$QUEUE_DIR/$p"; c="$q.speaking"
     mv "$q" "$c" 2>/dev/null || exit 0
-    voice_clear_state "$p"; voice_say_sync "$(cat "$c")"; rm -f "$c" ;;
+    voice_say_sync "$(cat "$c")"; rm -f "$c" ;;
 
   # recap [pane] — say what this tab is doing right now, on demand.
   recap) _recap "${2:-${WEZTERM_PANE:-}}" ;;

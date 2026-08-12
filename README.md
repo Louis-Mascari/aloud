@@ -44,12 +44,12 @@ Each **inactive** tab shows one colored glyph (the active tab you can already se
 
 | Glyph | Color | State | Needs you |
 |-------|-------|-------|-----------|
-| ◍ | blue | working | no |
+| (none) | — | working | no — stays plain so it recedes |
 | ✓ | green | done | review / next |
 | ⏸ | amber | waiting on input | yes |
 | ✗ | red | error | yes, now |
 
-The status bar shows an aggregate like `✗1 ⏸2 ✓3` — how many panes need you, most urgent first.
+A `✓` clears from a tab once you switch to it (seen). The status bar aggregates only what needs an action, e.g. `✗1 ⏸2`, so a non-empty badge always means "act now."
 
 ## Keys
 
@@ -58,6 +58,7 @@ The status bar shows an aggregate like `✗1 ⏸2 ✓3` — how many panes need 
 | **CMD+SHIFT+V** | speak this pane's queued sentence now |
 | **CMD+SHIFT+R** | recap what this tab is doing (task + state) |
 | **CMD+SHIFT+J** | jump to the most urgent pane and speak its recap |
+| **CMD+.** | interrupt speech (barge-in) — talk over Claude |
 | **CMD+CTRL+V** | toggle auto ⇄ wait |
 | `/voice` (in Claude Code) | push-to-talk dictation |
 
@@ -107,8 +108,10 @@ voice that's still 100% offline:
 ```
 
 [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) runs locally on Apple
-Silicon in near real time. Pick a voice with `VOICE_KOKORO_VOICE` (`af_heart`,
-`am_adam`, `bf_emma`, …). If Kokoro isn't set up, it falls back to `say`.
+Silicon. A warm daemon keeps the model loaded and speaks sentence-by-sentence, so
+audio starts in about a second instead of after the whole summary synthesizes.
+Pick a voice with `VOICE_KOKORO_VOICE` (`af_heart`, `am_adam`, `bf_emma`, …). If
+Kokoro isn't set up, it falls back to `say`.
 
 ## Barge-in
 

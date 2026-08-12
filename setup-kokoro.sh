@@ -21,6 +21,7 @@ base="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-
 [ -f voices-v1.0.bin ]  || curl -fL --retry 3 -o voices-v1.0.bin  "$base/voices-v1.0.bin"
 
 cp "$REPO/kokoro/synth.py" "$K/synth.py"
+cp "$REPO/kokoro/daemon.py" "$K/daemon.py"
 
 echo
 echo "Kokoro ready. Enable it in ~/.claude/voice/config.sh:"

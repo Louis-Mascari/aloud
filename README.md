@@ -115,14 +115,24 @@ Kokoro isn't set up, it falls back to `say`.
 
 ## Barge-in
 
-Sending a prompt (typed or dictated) stops any speech in progress — start your
-next instruction and Claude stops talking. `voice stop` cuts speech on demand.
+Speech stops automatically when you **send a prompt** or **switch to another pane**
+(you left that conversation). `voice stop` cuts it on demand — `CMD+.` in WezTerm,
+or bind it for any terminal / a global hotkey via [RECIPES.md](RECIPES.md).
 
-## Portable vs. WezTerm
+## Portable by design
 
-- **Core** (any terminal): hooks + `say` + modes + queue. Works with no WezTerm;
-  "which pane finished" falls back to a ping.
-- **WezTerm layer** (opt-in): the tab glyph and speak-on-return.
+The core is OS- and terminal-agnostic: Claude Code hooks write **state files** (the
+stable contract), and audio goes through a detected backend you can override.
+
+- **Audio** auto-detects speech (`say` → `spd-say` → `espeak-ng`) and sound (`afplay`
+  → `paplay` → `aplay`); force either with `VOICE_SPEAK_CMD` / `VOICE_PLAY_CMD`.
+  Kokoro plays cross-platform via `sounddevice`.
+- **Interrupt** is a plain `voice stop`; the key that triggers it (per-terminal or an
+  OS-global hotkey) is a recipe in [RECIPES.md](RECIPES.md), not hardcoded.
+- **Terminals**: WezTerm draws the glyphs/badge today; any terminal can read the same
+  state files — tmux/kitty are an adapter recipe away.
+- A missing backend degrades gracefully: warns once, the hook still exits 0, glyphs
+  still work.
 
 ## Troubleshooting
 
@@ -144,8 +154,11 @@ next instruction and Claude stops talking. `voice stop` cuts speech on demand.
 | `hooks/on-stopfailure.sh` | flag "error" when a turn fails |
 | `hooks/on-session.sh` | clear a pane's files on start/end (no stale glyphs) |
 | `bin/voice` | `auto`/`wait`/`toggle`/`status`/`stop`/`drain`/`recap`/`jump`/`attention` |
-| `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice |
+| `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice (warm daemon) |
+| `lib/voice-audio.sh` | portable speak/play/stop, detected + overridable |
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |
+| `RECIPES.md` | bind `voice stop` per-terminal or as an OS-global hotkey |
+| `test/test-audio.sh` | portability self-check (fake backend, no speaker needed) |
 | `wezterm/INTEGRATE.md` | 4 edits for an existing `wezterm.lua` |
 | `wezterm/voice.lua` | drop-in module for a fresh `wezterm.lua` |
 | `config/CLAUDE.snippet.md` | the 🔊 rule the installer appends |

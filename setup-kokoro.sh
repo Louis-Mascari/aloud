@@ -13,7 +13,11 @@ mkdir -p "$K"; cd "$K"
 
 echo "==> venv + deps"
 uv venv --python 3.12
-uv pip install --python "$K/.venv/bin/python" -q kokoro-onnx soundfile
+uv pip install --python "$K/.venv/bin/python" -q kokoro-onnx soundfile sounddevice
+# sounddevice bundles PortAudio on macOS/Windows; on Linux it needs the system lib:
+#   Debian/Ubuntu: sudo apt install libportaudio2
+[ "$(uname -s)" = Linux ] && ldconfig -p 2>/dev/null | grep -q portaudio \
+  || { [ "$(uname -s)" = Linux ] && echo "NOTE: install libportaudio2 (e.g. sudo apt install libportaudio2)"; }
 
 echo "==> models (~360MB, skipped if present)"
 base="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"

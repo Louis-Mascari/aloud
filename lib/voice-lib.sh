@@ -17,6 +17,7 @@ VOICE_SAY_RATE="${VOICE_SAY_RATE:-}"
 
 # TTS backend: say (built-in default) or kokoro (local neural; setup-kokoro.sh).
 VOICE_TTS="${VOICE_TTS:-say}"
+KOKORO_DIR="${KOKORO_DIR:-$VOICE_DIR/kokoro}"
 KOKORO_SAY="${KOKORO_SAY:-$_VOICE_LIB_DIR/../bin/kokoro-say}"
 VOICE_KOKORO_VOICE="${VOICE_KOKORO_VOICE:-af_heart}"
 VOICE_KOKORO_SPEED="${VOICE_KOKORO_SPEED:-1.0}"
@@ -26,6 +27,14 @@ VOICE_SOUND_READY="${VOICE_SOUND_READY:-/System/Library/Sounds/Glass.aiff}"
 VOICE_SOUND_INPUT="${VOICE_SOUND_INPUT:-/System/Library/Sounds/Ping.aiff}"
 VOICE_SOUND_ERROR="${VOICE_SOUND_ERROR:-/System/Library/Sounds/Basso.aiff}"
 VOICE_SOUND_WAIT="${VOICE_SOUND_WAIT:-/System/Library/Sounds/Submarine.aiff}"
+
+# The portable audio layer (speak / play / stop), detected + overridable.
+. "$_VOICE_LIB_DIR/voice-audio.sh"
+
+# Public names kept stable for the hooks/CLI; they map onto the audio layer.
+voice_say()      { voice_speak "$1"; }
+voice_say_sync() { voice_speak_sync "$1"; }
+voice_ping()     { voice_play "$1"; }
 
 voice_init() {
   mkdir -p "$QUEUE_DIR" "$STATE_DIR" "$TASK_DIR" "$LAST_DIR"
@@ -61,16 +70,3 @@ voice_clear_pane()  { [ -n "$1" ] && rm -f "$STATE_DIR/$1" "$QUEUE_DIR/$1" "$QUE
 
 # Triage rank: higher = more urgent. Drives the aggregate badge and `voice jump`.
 voice_rank() { case "$1" in error) echo 3;; input) echo 2;; ready) echo 1;; *) echo 0;; esac; }
-
-_voice_say() {
-  if [ "$VOICE_TTS" = kokoro ] && [ -x "$KOKORO_SAY" ]; then
-    "$KOKORO_SAY" "$1" "$VOICE_KOKORO_VOICE" "$VOICE_KOKORO_SPEED" && return 0
-  fi
-  local -a a=(say)
-  [ -n "$VOICE_SAY_VOICE" ] && a+=(-v "$VOICE_SAY_VOICE")
-  [ -n "$VOICE_SAY_RATE" ]  && a+=(-r "$VOICE_SAY_RATE")
-  "${a[@]}" "$1"
-}
-voice_say()      { [ -n "$1" ] && ( _voice_say "$1" >/dev/null 2>&1 & ); }
-voice_say_sync() { [ -n "$1" ] && _voice_say "$1"; }
-voice_ping()     { [ -n "$1" ] && ( afplay "$1" >/dev/null 2>&1 & ); }

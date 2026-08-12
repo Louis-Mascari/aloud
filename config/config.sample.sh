@@ -8,7 +8,13 @@
 # VOICE_KOKORO_VOICE=af_heart   # af_sarah, am_adam, am_michael, bf_emma, bm_george, ...
 # VOICE_KOKORO_SPEED=1.0
 
-# --- macOS `say` voice (only used when VOICE_TTS=say) -------------------------
+# --- Audio backend (auto-detected from PATH; set to force or on Windows) -------
+# speak: say (macOS) / spd-say / espeak-ng / espeak; play: afplay / paplay / aplay / ...
+# VOICE_SPEAK_CMD="espeak-ng -s 160"
+# VOICE_PLAY_CMD="paplay"
+# Windows (Git Bash): point these at PowerShell one-liners.
+
+# --- macOS `say` voice (only used when VOICE_SPEAK_CMD is `say`) ---------------
 # For a better native voice, download a Premium/Enhanced one:
 #   System Settings ▸ Accessibility ▸ Spoken Content ▸ System Voice ▸ Manage Voices…
 # then name it exactly as `say -v '?'` prints it:

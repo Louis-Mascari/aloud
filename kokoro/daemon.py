@@ -1,5 +1,5 @@
-import os, re, socket, subprocess, tempfile
-import soundfile as sf
+import os, re, socket, time, threading, queue
+import sounddevice as sd
 from kokoro_onnx import Kokoro
 
 K = os.path.dirname(os.path.abspath(__file__))
@@ -16,19 +16,46 @@ def sentences(text):
     return [s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s]
 
 
+def interrupted(since):
+    return os.path.exists(STOP) and os.path.getmtime(STOP) > since
+
+
 def speak(text, voice, speed):
-    # Play one sentence at a time so audio starts after the first short chunk,
-    # not after synthesizing the whole summary. Check the interrupt flag between.
-    start = os.path.getmtime(STOP) if os.path.exists(STOP) else 0
-    for s in sentences(text):
-        if os.path.exists(STOP) and os.path.getmtime(STOP) > start:
+    # Synthesize the next sentence on a worker thread while the current one plays,
+    # so playback is gapless. Play via sounddevice (cross-platform, interruptible).
+    since = os.path.getmtime(STOP) if os.path.exists(STOP) else 0.0
+    q = queue.Queue(maxsize=2)
+
+    def produce():
+        for s in sentences(text):
+            if interrupted(since):
+                break
+            try:
+                samples, sr = kok.create(s, voice=voice, speed=speed, lang="en-us")
+            except Exception:
+                continue
+            q.put((samples, sr))
+        q.put(None)
+
+    threading.Thread(target=produce, daemon=True).start()
+
+    while True:
+        item = q.get()
+        if item is None or interrupted(since):
+            sd.stop()
             return
-        samples, sr = kok.create(s, voice=voice, speed=speed, lang="en-us")
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-            wav = f.name
-        sf.write(wav, samples, sr)
-        subprocess.run(["afplay", wav])
-        os.unlink(wav)
+        samples, sr = item
+        sd.play(samples, sr)
+        while True:
+            try:
+                if not sd.get_stream().active:
+                    break
+            except Exception:
+                break
+            if interrupted(since):
+                sd.stop()
+                return
+            time.sleep(0.03)
 
 
 if os.path.exists(SOCK):

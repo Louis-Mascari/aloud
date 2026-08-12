@@ -66,14 +66,20 @@ moment you focus it — so `✓` means "done and not yet seen". `CMD+SHIFT+J`
 
 ## Speech
 
-`say` speaks synchronously. Kokoro runs as a warm daemon (`kokoro/daemon.py`, a
-unix socket) that loads the model once and plays **sentence by sentence**, so
-audio starts after the first short sentence rather than after the whole summary.
-`CMD+.` (`voice stop`) touches an interrupt file the daemon checks between
-sentences, so barge-in cuts a summary mid-way.
+Audio goes through a detected backend (`lib/voice-audio.sh`) — `voice_speak` /
+`voice_play` / `voice_stop`, resolved from PATH (`say`→`spd-say`→`espeak-ng`,
+`afplay`→`paplay`→`aplay`) and overridable via `VOICE_SPEAK_CMD` /
+`VOICE_PLAY_CMD`. Kokoro runs as a warm daemon (`kokoro/daemon.py`, a unix socket)
+that loads the model once and, on a worker thread, synthesizes the next sentence
+while the current one plays (via cross-platform `sounddevice`) — gapless. `voice
+stop` touches an interrupt file the daemon checks between and within sentences, so
+barge-in cuts a summary mid-way.
 
 ## Portability
 
-The hooks degrade cleanly. With no `$WEZTERM_PANE` and no WezTerm, everything
-still speaks (no glyphs, no focus logic). Missing `say` / `afplay` / Kokoro just
-no-op; only `jq` is required, and its absence is reported once.
+The state files are the portable contract; WezTerm is one adapter (tmux/kitty can
+read the same files). Audio is a detected, overridable backend, so no macOS command
+is hardcoded in the hot path. With no `$WEZTERM_PANE` and no WezTerm everything still
+speaks; a missing audio backend warns once and no-ops (the hook still exits 0); only
+`jq` is required. The interrupt is `voice stop` plus per-environment binding recipes
+(`RECIPES.md`), never a hardcoded terminal dependency.

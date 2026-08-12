@@ -4,6 +4,7 @@
 # Emits nothing on stdout (that would inject into the prompt).
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; . "$HERE/../lib/voice-lib.sh"
 voice_init
+voice_stop   # barge-in: submitting a prompt cuts off any speech still playing
 pane="${WEZTERM_PANE:-}"
 task="$(jq -r '.user_input // .prompt // empty' 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ *$//' | cut -c1-80)"
 [ -n "$task" ] && voice_set_task "$pane" "$task"

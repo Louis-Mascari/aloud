@@ -75,6 +75,12 @@ load. That's it.
 
 Needs `jq` and macOS `say` (both standard/`brew install jq`).
 
+Put the `voice` command on your PATH so it works from any directory:
+
+```bash
+echo 'export PATH="$HOME/Desktop/personal/claude-voice/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
+```
+
 ## Try it (30 seconds)
 
 In a Claude Code pane:
@@ -110,8 +116,9 @@ voice that's still 100% offline:
 [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) runs locally on Apple
 Silicon. A warm daemon keeps the model loaded and speaks sentence-by-sentence, so
 audio starts in about a second instead of after the whole summary synthesizes.
-Pick a voice with `VOICE_KOKORO_VOICE` (`af_heart`, `am_adam`, `bf_emma`, …). If
-Kokoro isn't set up, it falls back to `say`.
+Audition all 54 voices with **`voice voices`** (or a group: `voice voices af` /
+`am` / `bf` / `bm`), then lock one in with **`voice use bf_emma`**. If Kokoro
+isn't set up, it falls back to `say`.
 
 ## Barge-in
 
@@ -143,6 +150,18 @@ stable contract), and audio goes through a detected backend you can override.
 | Voice still robotic | You're on `say`. Run `./setup-kokoro.sh`, then set `VOICE_TTS=kokoro`. |
 | Speaks from the wrong pane | Launch Claude Code inside WezTerm so `$WEZTERM_PANE` reaches the hooks. |
 | Speech won't stop | Send a prompt (barge-in) or run `voice stop`. |
+
+## Configuration
+
+All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample.sh`):
+
+| Var | What |
+|-----|------|
+| `VOICE_TTS` | `say` (built-in) or `kokoro` (neural) |
+| `VOICE_KOKORO_VOICE` | Kokoro voice — `voice voices` to audition, `voice use <v>` to set |
+| `VOICE_SAY_VOICE` / `VOICE_SAY_RATE` | macOS `say` voice + words/min |
+| `VOICE_SPEAK_CMD` / `VOICE_PLAY_CMD` | force the audio backend (Linux/Windows) |
+| `VOICE_SOUND_*` | cue sounds (path, or `""` to silence one) |
 
 ## Files
 

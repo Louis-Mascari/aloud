@@ -42,11 +42,16 @@ def read_key(timeout):
     if not select.select([sys.stdin], [], [], timeout)[0]:
         return None
     c = sys.stdin.read(1)
-    if c == "\x1b":  # arrow keys arrive as ESC [ C / ESC [ D
-        if select.select([sys.stdin], [], [], 0.002)[0]:
-            seq = sys.stdin.read(2)
-            if seq == "[C": return "next"
-            if seq == "[D": return "prev"
+    if c == "\x1b":  # arrows are ESC [ X or ESC O X; read the follow bytes, key on the last
+        seq = ""
+        for _ in range(2):
+            if select.select([sys.stdin], [], [], 0.05)[0]:
+                seq += sys.stdin.read(1)
+            else:
+                break
+        last = seq[-1:]
+        if last in ("C", "B"): return "next"   # right / down
+        if last in ("D", "A"): return "prev"   # left / up
         return None
     if c in ("q", "\x03"): return "quit"
     if c in (" ", "n", "j", "\r"): return "next"

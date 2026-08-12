@@ -32,7 +32,27 @@ case "${1:-status}" in
   toggle)
     if [ "$(voice_mode)" = auto ]; then echo wait > "$MODE_FILE"; voice_ping "$VOICE_SOUND_WAIT"
     else echo auto > "$MODE_FILE"; voice_say "Voice on"; fi ;;
-  status) echo "voice mode: $(voice_mode)" ;;
+  status) echo "voice mode: $(voice_mode)  |  kokoro voice: $VOICE_KOKORO_VOICE" ;;
+
+  # voices [prefix] — hear a sample in each Kokoro voice (filter: af am bf bm).
+  voices)
+    if [ -x "$KOKORO_DIR/.venv/bin/python" ] && [ -f "$KOKORO_DIR/demo-voices.py" ]; then
+      "$KOKORO_DIR/.venv/bin/python" "$KOKORO_DIR/demo-voices.py" "${2:-}"
+    else
+      echo "Kokoro not set up. Built-in 'say' voices: run  say -v '?'"
+    fi ;;
+
+  # use <voice> — set the Kokoro voice in config.sh and preview it.
+  use)
+    v="${2:-}"; [ -n "$v" ] || { echo "usage: voice use <voice>  (e.g. af_heart)"; exit 2; }
+    cfg="$VOICE_DIR/config.sh"; touch "$cfg"
+    if grep -q '^VOICE_KOKORO_VOICE=' "$cfg"; then
+      sed -i.bak "s/^VOICE_KOKORO_VOICE=.*/VOICE_KOKORO_VOICE=$v/" "$cfg" && rm -f "$cfg.bak"
+    else
+      printf '\nVOICE_KOKORO_VOICE=%s\n' "$v" >> "$cfg"
+    fi
+    echo "voice set to $v"
+    [ -x "$KOKORO_SAY" ] && "$KOKORO_SAY" "This is now your voice." "$v" 1.0 ;;
   stop|shush) voice_stop; exit 0 ;;
 
   # drain [pane] — speak this pane's queued summary, else recap it. Distinct claim
@@ -97,5 +117,5 @@ case "${1:-status}" in
     [ "$e" -gt 0 ] && _a "✗$e"; [ "$i" -gt 0 ] && _a "⏸$i"; [ "$r" -gt 0 ] && _a "✓$r"
     printf '%s\n' "$out" ;;
 
-  *) echo "usage: voice {auto|wait|toggle|status|stop|drain|recap|jump|attention|refocus <pane>}"; exit 2 ;;
+  *) echo "usage: voice {auto|wait|toggle|status|stop|voices [prefix]|use <voice>|drain|recap|jump|attention}"; exit 2 ;;
 esac

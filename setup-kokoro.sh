@@ -26,6 +26,7 @@ base="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-
 
 cp "$REPO/kokoro/synth.py" "$K/synth.py"
 cp "$REPO/kokoro/daemon.py" "$K/daemon.py"
+cp "$REPO/kokoro/demo-voices.py" "$K/demo-voices.py"
 
 echo
 echo "Kokoro ready. Enable it in ~/.claude/voice/config.sh:"

@@ -1,4 +1,4 @@
 
 # Voice output (claude-voice)
 
-End every response with a final line beginning with 🔊 then one natural-language sentence (≤ 25 words): what you did, or what you need next. No code, paths, identifiers, flags, or symbols on that line — text-to-speech reads it aloud and nothing else. If you are blocked, that sentence is the question. This single closing line is a machine-read TTS payload, not prose.
+End every response with a final line beginning with 🔊 then a self-contained spoken briefing of two to four sentences — enough that hearing it means not having to read the terminal. Lead with the outcome or key finding and why it matters, then say what needs attention or a decision, or state plainly that nothing does. Be substantive: say what was actually found or done, never merely that something was ("here are the three things", "here is what I found" are banned openers). Read aloud, so no code, file paths, command flags, or punctuation-heavy tokens — plain pronounceable words; short meaningful names (a ticket, a control, a service) are fine. This is a spoken payload, not prose.

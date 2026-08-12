@@ -49,7 +49,7 @@ Each **inactive** tab shows one colored glyph (the active tab you can already se
 | ⏸ | amber | waiting on input | yes |
 | ✗ | red | error | yes, now |
 
-A `✓` clears from a tab once you switch to it (seen). The status bar aggregates only what needs an action, e.g. `✗1 ⏸2`, so a non-empty badge always means "act now."
+A `✓` clears once you switch to a tab (seen); a `⏸` clears when Claude resumes work (you approved the prompt) or the turn ends. The status bar aggregates only what needs an action, e.g. `✗1 ⏸2`, so a non-empty badge always means "act now" — and it counts only live panes, so a closed session can't leave a phantom in the count.
 
 ## Keys
 
@@ -170,6 +170,7 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `hooks/on-stop.sh` | speak or queue the 🔊 line when a turn ends |
 | `hooks/on-notification.sh` | cue / flag when Claude needs input |
 | `hooks/on-prompt.sh` | flag "working", record the task; barge-in on send |
+| `hooks/on-active.sh` | flag "working" on each tool run (clears a stale ⏸ when work resumes) |
 | `hooks/on-stopfailure.sh` | flag "error" when a turn fails |
 | `hooks/on-session.sh` | clear a pane's files on start/end (no stale glyphs) |
 | `bin/voice` | `auto`/`wait`/`toggle`/`status`/`stop`/`drain`/`recap`/`jump`/`attention` |

@@ -58,9 +58,11 @@ disambiguate multiple windows.
 
 ## Triage across many sessions
 
-The badge counts only what needs an action (`error`, `input`), so a non-empty
-badge always means "act now". A `ready` (done) tab shows a `✓` that clears the
-moment you focus it — so `✓` means "done and not yet seen". `CMD+SHIFT+J`
+The badge counts only what needs an action (`error`, `input`) **on live panes**
+(orphaned state files are pruned), so a non-empty badge always means "act now". A
+`ready` `✓` clears the moment you focus the tab; an `input` `⏸` clears when Claude
+resumes work — a `PreToolUse` hook sets `working` on each tool run, so approving a
+permission flips the tab out of "needs you" as soon as the next tool executes. `CMD+SHIFT+J`
 (`voice jump`) focuses the highest-severity pane and speaks its recap; `CMD+SHIFT+R`
 (`voice recap`) answers "what is this tab doing" from its `task` and `last` files.
 

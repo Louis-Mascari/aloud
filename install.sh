@@ -26,11 +26,12 @@ else
   tmp="$(mktemp)"
   jq --arg s "$REPO/hooks/on-stop.sh" --arg n "$REPO/hooks/on-notification.sh" \
      --arg p "$REPO/hooks/on-prompt.sh" --arg sf "$REPO/hooks/on-stopfailure.sh" \
-     --arg ses "$REPO/hooks/on-session.sh" '
+     --arg ses "$REPO/hooks/on-session.sh" --arg a "$REPO/hooks/on-active.sh" '
     .hooks.Stop             = ((.hooks.Stop // [])             + [{"hooks":[{"type":"command","command":("bash "+$s),"timeout":15}]}])
     | .hooks.StopFailure    = ((.hooks.StopFailure // [])      + [{"hooks":[{"type":"command","command":("bash "+$sf),"timeout":10}]}])
     | .hooks.Notification   = ((.hooks.Notification // [])     + [{"hooks":[{"type":"command","command":("bash "+$n),"timeout":15}]}])
     | .hooks.UserPromptSubmit = ((.hooks.UserPromptSubmit // []) + [{"hooks":[{"type":"command","command":("bash "+$p),"timeout":10}]}])
+    | .hooks.PreToolUse     = ((.hooks.PreToolUse // [])       + [{"matcher":".*","hooks":[{"type":"command","command":("bash "+$a),"timeout":5}]}])
     | .hooks.SessionStart   = ((.hooks.SessionStart // [])     + [{"hooks":[{"type":"command","command":("bash "+$ses),"timeout":10}]}])
     | .hooks.SessionEnd     = ((.hooks.SessionEnd // [])       + [{"hooks":[{"type":"command","command":("bash "+$ses),"timeout":10}]}])
   ' "$SETTINGS" > "$tmp"

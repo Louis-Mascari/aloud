@@ -79,20 +79,24 @@ case "${1:-status}" in
   # help — one-screen cheatsheet.
   help)
     cat <<'H'
-claude-voice — keys (WezTerm) and commands
-  CMD+SHIFT+V  drain: speak the unheard queued summary
-  CMD+SHIFT+R  replay the last summary from the start
-  CMD+SHIFT+J  jump to the most urgent pane + recap
-  CMD+SHIFT+/  this help
-  CMD+.        stop / interrupt speech
-  CMD+CTRL+V   toggle auto (speak) / wait (silent) mode
+claude-voice — press a key, or run `voice <command>`
 
-  voice voices [af|am|bf|bm]   audition voices (space next, p back, q quit)
-  voice use <voice>            set the voice
-  voice speed <0.5-2.0>        set speaking speed
-  voice autospeak [on|off]     speak on switch/finish, or stay silent
-  voice status | stop | drain | recap | jump
-  config: ~/.claude/voice/config.sh
+Hear it:
+  Cmd+Shift+V   play a background tab's pending summary
+  Cmd+Shift+R   repeat the last summary from the beginning
+  Cmd+Shift+J   jump to the tab that most needs you, and read it
+  Cmd+.         stop talking
+
+Quiet it:
+  Cmd+Ctrl+V           wait mode on/off — total silence, for meetings
+  voice autospeak off  stop auto-reading (still pings); pull with V or R
+
+Voice & speed:
+  voice voices [af|am|bf|bm]   hear the voices (space next, p back, q quit)
+  voice use <name>             pick a voice
+  voice speed 1.2              1.0 = normal, higher = faster
+
+  Cmd+Shift+/  this menu        config: ~/.claude/voice/config.sh
 H
     ;;
   stop|shush) voice_stop; exit 0 ;;

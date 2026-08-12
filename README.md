@@ -5,23 +5,19 @@ reading walls of text. Local, work-safe, and quiet when you need it to be.
 
 - **You speak** with Claude Code's built-in `/voice` (push-to-talk).
 - **Claude speaks back** one plain sentence per turn. Never code, paths, or diffs.
-- **Many panes at once?** Every tab shows a colored state glyph (working, done,
-  needs-you, error) and the status bar counts how many need you. One key jumps
-  to the most urgent and speaks it. Only the pane you're looking at talks.
+- **Many panes at once?** Tabs flag a colored glyph when they need you (done,
+  waiting, or errored) and the status bar counts how many do. One key jumps to
+  the most urgent and reads it. Only the pane you're looking at talks.
 - **In a meeting?** One toggle silences everything. Tabs still flag quietly.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    subgraph Pane["a Claude Code pane"]
-        CC["Claude finishes a turn<br/>(ends with a 🔊 sentence)"]
-    end
-    CC -->|Stop hook| Q{"Are you<br/>looking at<br/>this pane?"}
-    Q -->|yes, auto mode| SAY(["🔊 say it now"])
-    Q -->|no| FLAG["queue the sentence<br/>+ flag the tab ✓<br/>+ soft ping"]
-    FLAG -.->|you switch to the tab| SAY
-    FLAG -.->|or press CMD+SHIFT+V| SAY
+    CC["Claude finishes a turn<br/>(ends with a 🔊 sentence)"] -->|Stop hook| Q["queue it + flag the tab ✓<br/>(soft ping if it's a background tab)"]
+    Q -->|"the tab you're on"| SAY(["speak it"])
+    Q -.->|"you switch to that tab"| SAY
+    Q -.->|"or press CMD+SHIFT+V"| SAY
 ```
 
 The spoken sentence is written by Claude itself (a rule in `CLAUDE.md` tells it
@@ -37,6 +33,10 @@ code is never read aloud — nothing to strip, nothing to summarize.
 
 Toggle with **CMD+CTRL+V** (or `bin/voice toggle`). Entering *wait* makes only a
 quiet blip, safe mid-call.
+
+`voice autospeak off` is a separate, persistent setting: summaries stop
+*auto*-playing (you pull them with the keys) but you still get pings. Flip it off
+right before you dictate so it won't talk over you; wait mode silences everything.
 
 ## States at a glance
 
@@ -176,7 +176,9 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `hooks/on-active.sh` | flag "working" on each tool run (clears a stale ⏸ when work resumes) |
 | `hooks/on-stopfailure.sh` | flag "error" when a turn fails |
 | `hooks/on-session.sh` | clear a pane's files on start/end (no stale glyphs) |
-| `bin/voice` | `auto`/`wait`/`toggle`/`status`/`stop`/`drain`/`recap`/`jump`/`attention` |
+| `bin/voice` | the CLI — run `voice help` for keys + commands (`voices`, `use`, `speed`, `autospeak`, …) |
+| `lib/voice-lib.sh` | state files, focus logic, the `voice` helpers |
+| `kokoro/` | the neural-voice daemon, synth, and voice auditioner |
 | `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice (warm daemon) |
 | `lib/voice-audio.sh` | portable speak/play/stop, detected + overridable |
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |

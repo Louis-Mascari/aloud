@@ -2,8 +2,8 @@
 
 Everything is coordinated through small files under `~/.claude/voice/`. Claude
 Code hooks run **without a controlling terminal**, so they can't set OSC user
-vars the way `statusline.sh` does — but they can write files, and WezTerm's Lua
-reads them each render.
+vars the way a status line command (which renders inside the terminal) can — but
+they can write files, and WezTerm's Lua reads them each render.
 
 ```
 ~/.claude/voice/
@@ -24,11 +24,11 @@ a stale glyph or speak a dead session's summary.
 ```mermaid
 flowchart TD
     U["UserPromptSubmit"] --> W["state = working<br/>task = the prompt"]
-    S["Stop (last 🔊 line)"] --> R["queue += summary<br/>last = summary<br/>state = ready"]
+    S["Stop hook<br/>(reads Claude's 🔊 line)"] --> R["queue += summary<br/>last = summary<br/>state = ready"]
     SF["StopFailure"] --> E["state = error"]
     N["Notification"] --> NB{"blocking?"}
     NB -->|"permission / elicitation / needs-input"| I["state = input"]
-    NB -->|"idle"| R
+    NB -->|"idle"| IR["state = ready"]
     SE["SessionStart / SessionEnd"] --> C["clear this pane's files"]
 ```
 
@@ -50,13 +50,16 @@ flowchart LR
 
 ## Who decides "speak vs. queue"
 
-Every finish just queues the summary and flags the tab. WezTerm's `update-status`
-poll, guarded by `window:is_focused()`, speaks the focused pane's queue within
-~1s. The decision lives on the WezTerm side because only it reliably knows which
-pane is front-most: a hook can lose `$WEZTERM_PANE` under tmux/ssh and cannot
-disambiguate multiple windows. Switching panes runs `voice switched`, which stops
-the pane you left before speaking the new one. `VOICE_AUTO_SPEAK=false` disables
-all auto-speak, so nothing plays until you press a key.
+Under WezTerm, every finish just queues the summary and flags the tab; WezTerm's
+`update-status` poll, guarded by `window:is_focused()`, speaks the focused pane's
+queue within ~1s. The decision lives on the WezTerm side because only it reliably
+knows which pane is front-most: a hook can lose `$WEZTERM_PANE` under tmux/ssh and
+cannot disambiguate multiple windows. Switching panes runs `voice switched`, which
+stops the pane you left before speaking the new one.
+
+Without WezTerm (a plain terminal), there's no poll to do this, so the Stop hook
+speaks the recap directly when its pane is front-most. `VOICE_AUTO_SPEAK=false`
+disables all auto-speak in either case, so nothing plays until you press a key.
 
 ## Triage across many sessions
 
@@ -71,8 +74,8 @@ permission flips the tab out of "needs you" as soon as the next tool executes. `
 ## Speech
 
 Audio goes through a detected backend (`lib/voice-audio.sh`) — `voice_speak` /
-`voice_play` / `voice_stop`, resolved from PATH (`say`→`spd-say`→`espeak-ng`,
-`afplay`→`paplay`→`aplay`) and overridable via `VOICE_SPEAK_CMD` /
+`voice_play` / `voice_stop`, resolved from PATH (`say`→`spd-say`→`espeak-ng`→`espeak`,
+`afplay`→`paplay`→`pw-play`→`aplay`→`ffplay`→`play`) and overridable via `VOICE_SPEAK_CMD` /
 `VOICE_PLAY_CMD`. Kokoro runs as a warm daemon (`kokoro/daemon.py`, a unix socket)
 that loads the model once and, on a worker thread, synthesizes the next sentence
 while the current one plays (via cross-platform `sounddevice`) — gapless. `voice
@@ -83,7 +86,7 @@ barge-in cuts a summary mid-way.
 
 The state files are the portable contract; WezTerm is one adapter (tmux/kitty can
 read the same files). Audio is a detected, overridable backend, so no macOS command
-is hardcoded in the hot path. With no `$WEZTERM_PANE` and no WezTerm everything still
-speaks; a missing audio backend warns once and no-ops (the hook still exits 0); only
-`jq` is required. The interrupt is `voice stop` plus per-environment binding recipes
+is hardcoded in the hot path. With no `$WEZTERM_PANE` and no WezTerm the Stop hook
+speaks the recap itself; a missing audio backend warns once and no-ops (the hook
+still exits 0); only `jq` is required. The interrupt is `voice stop` plus per-environment binding recipes
 (`RECIPES.md`), never a hardcoded terminal dependency.

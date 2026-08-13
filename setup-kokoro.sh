@@ -8,7 +8,7 @@ command -v uv   >/dev/null || { echo "need uv: https://docs.astral.sh/uv/getting
 command -v curl >/dev/null || { echo "need curl"; exit 1; }
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-K="$HOME/.claude/voice/kokoro"
+K="${KOKORO_DIR:-$HOME/.claude/voice/kokoro}"
 mkdir -p "$K"; cd "$K"
 
 echo "==> venv + deps"
@@ -24,7 +24,6 @@ base="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-
 [ -f kokoro-v1.0.onnx ] || curl -fL --retry 3 -o kokoro-v1.0.onnx "$base/kokoro-v1.0.onnx"
 [ -f voices-v1.0.bin ]  || curl -fL --retry 3 -o voices-v1.0.bin  "$base/voices-v1.0.bin"
 
-cp "$REPO/kokoro/synth.py" "$K/synth.py"
 cp "$REPO/kokoro/daemon.py" "$K/daemon.py"
 cp "$REPO/kokoro/demo-voices.py" "$K/demo-voices.py"
 

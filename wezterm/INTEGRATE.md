@@ -10,9 +10,9 @@ Fresh config with no `format-tab-title` / `update-status` of your own? Copy
 ### 1. Near the top, after `config`
 
 ```lua
-local VOICE_BIN = wezterm.home_dir .. '/Desktop/personal/claude-voice/bin/voice'
+local VOICE_BIN = wezterm.home_dir .. '/claude-voice/bin/voice'
 local VOICE_STATE_DIR = wezterm.home_dir .. '/.claude/voice/state'
-local VOICE_GLYPH = {  -- a tab lights up only when done or needing you; working stays plain
+local VOICE_GLYPH = {  -- lights up only when done or needing you; colors are one theme's green/amber/red, swap for your own
   ready = { g = '✓', c = '#76946a' }, -- green: done
   input = { g = '⏸', c = '#e6c384' }, -- amber: blocked on you
   error = { g = '✗', c = '#c34043' }, -- red: failed
@@ -21,6 +21,33 @@ local function voice_state(pane_id)
   local f = io.open(VOICE_STATE_DIR .. '/' .. tostring(pane_id), 'r')
   if not f then return nil end
   local s = f:read 'l'; f:close(); return s
+end
+-- Most urgent state across ALL panes in a tab, not just its active pane, so a
+-- Claude pane split behind an idle shell still lights the tab. error > input > ready.
+-- Enumerated via the mux (matched by tab_id), which is reliable across versions.
+local VOICE_TAB_PRIORITY = { 'error', 'input', 'ready' }
+local function voice_tab_state(tab)
+  local seen = {}
+  local ok = pcall(function()
+    for _, w in ipairs(wezterm.mux.all_windows()) do
+      for _, t in ipairs(w:tabs()) do
+        if t:tab_id() == tab.tab_id then
+          for _, p in ipairs(t:panes()) do
+            local s = voice_state(p:pane_id())
+            if s then seen[s] = true end
+          end
+        end
+      end
+    end
+  end)
+  if not ok then                                    -- mux unavailable: at least the active pane
+    local s = voice_state(tab.active_pane.pane_id)
+    if s then seen[s] = true end
+  end
+  for _, s in ipairs(VOICE_TAB_PRIORITY) do
+    if seen[s] then return s end
+  end
+  return nil
 end
 local VOICE_LAST_FOCUSED = {}  -- window_id -> last focused pane_id, to detect switches
 local function voice_live_panes()
@@ -65,7 +92,7 @@ end
 ### 2. Inside your `format-tab-title`, a colored glyph on inactive tabs
 
 ```lua
-local vg = tab.is_active and nil or VOICE_GLYPH[voice_state(tab.active_pane.pane_id) or '']
+local vg = tab.is_active and nil or VOICE_GLYPH[voice_tab_state(tab) or '']
 -- then, when building your returned cells, prepend when vg is set:
 --   { Foreground = { Color = vg.c } }, { Text = ' ' .. vg.g },
 ```
@@ -116,4 +143,5 @@ table.insert(config.keys, { key = '/', mods = 'CMD|SHIFT',
   end) })
 ```
 
-Validate with: `wezterm --config-file ~/.wezterm.lua ls-fonts >/dev/null && echo ok`
+Validate with: `wezterm ls-fonts >/dev/null && echo ok` (WezTerm loads your active
+config automatically, wherever it lives).

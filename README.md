@@ -4,25 +4,49 @@ Talk to Claude Code, and have it talk back — without a hot mic and without
 reading walls of text. Local, work-safe, and quiet when you need it to be.
 
 - **You speak** with Claude Code's built-in `/voice` (push-to-talk).
-- **Claude speaks back** one plain sentence per turn. Never code, paths, or diffs.
+- **Claude speaks back** a short spoken recap per turn (a sentence, or a few). Never code, paths, or diffs.
 - **Many panes at once?** Tabs flag a colored glyph when they need you (done,
   waiting, or errored) and the status bar counts how many do. One key jumps to
   the most urgent and reads it. Only the pane you're looking at talks.
 - **In a meeting?** One toggle silences everything. Tabs still flag quietly.
 
+## Built for WezTerm (read this first)
+
+I built this for myself, and I run [WezTerm](https://wezfurlong.org/wezterm/).
+Split it in two before you decide if it's for you:
+
+- **Voice in and out works on any terminal.** The Claude Code hooks + `/voice`
+  dictation + local TTS have no terminal dependency. If all you want is spoken
+  recaps instead of reading walls of text, you're done after `install.sh`.
+- **The multi-pane niceties live in my WezTerm config.** Specifically: the
+  per-tab status glyphs (✓ / ⏸ / ✗), the status-bar count of panes needing you,
+  jump-to-the-most-urgent-pane, speak-on-return, and the `CMD+…` keybindings.
+  These are drawn by WezTerm polling the state files the hooks write.
+
+Want those niceties on a different terminal? You'll need one you can script
+(tmux, kitty, …). The hooks already write the state (the stable contract), so
+it's a wiring job, not a rewrite: read the same state files and render the
+glyphs/badge, and bind a key to `voice stop` and `voice drain`. The pieces and the
+contract are in [Portable by design](#portable-by-design) below — enough for you
+(or an agent) to adapt it to your setup. Stock macOS Terminal.app can't script
+per-tab glyphs, so there you get the voice half only.
+
 ## How it works
 
 ```mermaid
 flowchart LR
-    CC["Claude finishes a turn<br/>(ends with a 🔊 sentence)"] -->|Stop hook| Q["queue it + flag the tab ✓<br/>(soft ping if it's a background tab)"]
+    CC["Claude ends its reply<br/>with a 🔊 recap line"] -->|"Stop hook fires"| Q["the hook queues that line<br/>and flags the tab ✓<br/>(soft ping if it's a background tab)"]
     Q -->|"the tab you're on"| SAY(["speak it"])
     Q -.->|"you switch to that tab"| SAY
     Q -.->|"or press CMD+SHIFT+V"| SAY
 ```
 
-The spoken sentence is written by Claude itself (a rule in `CLAUDE.md` tells it
-to end every reply with a `🔊` one-liner). The hook speaks only that line, so
+The spoken recap is written by Claude itself (a rule in `CLAUDE.md` tells it
+to end every reply with a `🔊` line). The hook speaks only that line, so
 code is never read aloud — nothing to strip, nothing to summarize.
+
+For the full picture (every hook, the state files, and how WezTerm reads them),
+see [`docs/architecture.md`](docs/architecture.md).
 
 ## Two modes
 
@@ -53,9 +77,12 @@ A `✓` clears once you switch to a tab (seen); a `⏸` clears when Claude resum
 
 ## Keys
 
+The `CMD+…` shortcuts are WezTerm bindings; on another terminal run the same
+actions as `voice <command>` (see `voice help`) or bind them yourself.
+
 | Key | Does |
 |-----|------|
-| **CMD+SHIFT+V** | speak this pane's queued sentence now |
+| **CMD+SHIFT+V** | speak this pane's queued recap now |
 | **CMD+SHIFT+R** | replay the last summary from the start (cuts current playback; no old audio continues) |
 | **CMD+SHIFT+J** | jump to the most urgent pane and speak its recap |
 | **CMD+.** | interrupt speech (barge-in) — talk over Claude |
@@ -66,11 +93,11 @@ A `✓` clears once you switch to a tab (seen); a `⏸` clears when Claude resum
 ## Install (macOS)
 
 ```bash
-git clone <this repo> ~/Desktop/personal/claude-voice
-~/Desktop/personal/claude-voice/install.sh      # backs up, then wires hooks + CLAUDE.md
+git clone <this repo> ~/claude-voice
+~/claude-voice/install.sh      # backs up, then wires hooks + CLAUDE.md
 ```
 
-Then, if you use WezTerm, apply `wezterm/INTEGRATE.md` to your `~/.wezterm.lua`
+Then, if you use WezTerm, apply `wezterm/INTEGRATE.md` to your `wezterm.lua` (`~/.wezterm.lua` or `~/.config/wezterm/wezterm.lua`)
 (tab glyphs + speak-on-return). Start a **new** Claude Code session so the hooks
 load. That's it.
 
@@ -79,7 +106,7 @@ Needs `jq` and macOS `say` (both standard/`brew install jq`).
 Put the `voice` command on your PATH so it works from any directory:
 
 ```bash
-echo 'export PATH="$HOME/Desktop/personal/claude-voice/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
+echo 'export PATH="$HOME/claude-voice/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
 ```
 
 ## Try it (30 seconds)
@@ -87,7 +114,7 @@ echo 'export PATH="$HOME/Desktop/personal/claude-voice/bin:$PATH"' >> ~/.zshrc  
 In a Claude Code pane:
 
 1. Run `/voice` once to enable push-to-talk dictation.
-2. Ask Claude anything. When it finishes, you hear **one spoken sentence** — never the code.
+2. Ask Claude anything. When it finishes, you hear **a short spoken recap** — never the code.
 3. Open a second tab, start something there, switch away. When it finishes, that tab
    shows **✓** and pings. Switch back and it speaks. That's the async loop.
 4. Heading into a meeting? **CMD+CTRL+V** silences everything (tabs still flag quietly). Toggle back after.
@@ -97,7 +124,7 @@ In a Claude Code pane:
 Yes. Nothing proprietary leaves your Mac.
 
 - **Output** is synthesized locally — macOS `say` or the Kokoro neural voice,
-  both fully offline. Your code, diffs, and the spoken sentence never leave the Mac.
+  both fully offline. Your code, diffs, and the spoken recap never leave the Mac.
 - **Input** (`/voice`) sends *audio of your voice* to Anthropic's speech service
   only — the same vendor already handling your Claude sessions. No third party.
 - Prefer zero audio off-device? Swap `/voice` for a local STT (whisper.cpp) — the
@@ -114,10 +141,10 @@ voice that's still 100% offline:
 #   VOICE_TTS=kokoro
 ```
 
-[Kokoro](https://github.com/thewh1teagle/kokoro-onnx) runs locally on Apple
-Silicon. A warm daemon keeps the model loaded and speaks sentence-by-sentence, so
+[Kokoro](https://github.com/thewh1teagle/kokoro-onnx) runs locally (Apple Silicon,
+and Linux/Windows via sounddevice). A warm daemon keeps the model loaded and speaks sentence-by-sentence, so
 audio starts in about a second instead of after the whole summary synthesizes.
-Audition all 54 voices with **`voice voices`** — **space** next, **p** back, **q**
+Audition every Kokoro voice with **`voice voices`** — **space** next, **p** back, **q**
 quit — or narrow to a group (`voice voices af` / `am` / `bf` / `bm`). Lock one in
 with **`voice use bf_emma`**. If Kokoro isn't set up, it falls back to `say`.
 
@@ -132,8 +159,9 @@ or bind it for any terminal / a global hotkey via [RECIPES.md](RECIPES.md).
 The core is OS- and terminal-agnostic: Claude Code hooks write **state files** (the
 stable contract), and audio goes through a detected backend you can override.
 
-- **Audio** auto-detects speech (`say` → `spd-say` → `espeak-ng`) and sound (`afplay`
-  → `paplay` → `aplay`); force either with `VOICE_SPEAK_CMD` / `VOICE_PLAY_CMD`.
+- **Audio** auto-detects speech (`say` → `spd-say` → `espeak-ng` → `espeak`) and sound
+  (`afplay` → `paplay` → `pw-play` → `aplay` → `ffplay` → `play`); force either with
+  `VOICE_SPEAK_CMD` / `VOICE_PLAY_CMD`.
   Kokoro plays cross-platform via `sounddevice`.
 - **Interrupt** is a plain `voice stop`; the key that triggers it (per-terminal or an
   OS-global hotkey) is a recipe in [RECIPES.md](RECIPES.md), not hardcoded.
@@ -178,7 +206,7 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `hooks/on-session.sh` | clear a pane's files on start/end (no stale glyphs) |
 | `bin/voice` | the CLI — run `voice help` for keys + commands (`voices`, `use`, `speed`, `autospeak`, …) |
 | `lib/voice-lib.sh` | state files, focus logic, the `voice` helpers |
-| `kokoro/` | the neural-voice daemon, synth, and voice auditioner |
+| `kokoro/` | the neural-voice daemon and voice auditioner |
 | `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice (warm daemon) |
 | `lib/voice-audio.sh` | portable speak/play/stop, detected + overridable |
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |
@@ -188,4 +216,8 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `wezterm/voice.lua` | drop-in module for a fresh `wezterm.lua` |
 | `config/CLAUDE.snippet.md` | the 🔊 rule the installer appends |
 
-See `docs/architecture.md` for the full event/state map.
+See [`docs/architecture.md`](docs/architecture.md) for the full event/state map.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

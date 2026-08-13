@@ -14,11 +14,11 @@ command -v say >/dev/null || { echo "need macOS 'say' (this targets macOS)"; exi
 
 echo "repo: $REPO"
 chmod +x "$REPO"/hooks/*.sh "$REPO"/bin/voice
-mkdir -p "$HOME/.claude/voice/queue" "$HOME/.claude/voice/state"
+mkdir -p "$CLAUDE_DIR" "$HOME/.claude/voice/queue" "$HOME/.claude/voice/state"
 [ -f "$HOME/.claude/voice/mode" ] || echo auto > "$HOME/.claude/voice/mode"
 
 # ── hooks into settings.json ─────────────────────────────────────────
-if [ -f "$SETTINGS" ] && grep -q 'claude-voice/hooks' "$SETTINGS"; then
+if [ -f "$SETTINGS" ] && grep -q 'hooks/on-stop.sh' "$SETTINGS"; then
   echo "settings.json: hooks already present, skipping"
 else
   [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"

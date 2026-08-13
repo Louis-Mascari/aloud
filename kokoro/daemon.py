@@ -1,4 +1,5 @@
-import os, re, socket, time, threading, queue
+import os, re, socket, threading, queue
+import numpy as np
 import sounddevice as sd
 from kokoro_onnx import Kokoro
 
@@ -11,6 +12,9 @@ DEF_SPEED = float(os.environ.get("VOICE_KOKORO_SPEED", "1.0"))
 
 kok = Kokoro(os.path.join(K, "kokoro-v1.0.onnx"), os.path.join(K, "voices-v1.0.bin"))
 
+_stream = None   # one persistent output stream, reused across sentences
+_stream_sr = None
+
 
 def sentences(text):
     return [s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s]
@@ -20,9 +24,39 @@ def interrupted(since):
     return os.path.exists(STOP) and os.path.getmtime(STOP) > since
 
 
+def output_stream(sr):
+    # One persistent stream fed sentence-by-sentence. A fresh sd.play() per
+    # sentence dropped the leading samples during the device's cold-start ramp
+    # ("ood" for "Good") and clicked at each boundary. The 0.15s silence primer
+    # on open absorbs that ramp so the first word survives.
+    global _stream, _stream_sr
+    if _stream is None or _stream_sr != sr:
+        drop_stream()
+        # latency="high" gives a larger buffer so a slow synth between sentences
+        # doesn't starve the stream and glitch; barge-in still cuts via abort().
+        _stream = sd.OutputStream(samplerate=sr, channels=1, dtype="float32", latency="high")
+        _stream.start()
+        _stream_sr = sr
+        _stream.write(np.zeros(int(sr * 0.15), dtype="float32"))
+    return _stream
+
+
+def drop_stream():
+    global _stream, _stream_sr
+    if _stream is not None:
+        try:
+            _stream.abort()
+            _stream.close()
+        except Exception:
+            pass
+    _stream = None
+    _stream_sr = None
+
+
 def speak(text, voice, speed):
     # Synthesize the next sentence on a worker thread while the current one plays,
-    # so playback is gapless. Play via sounddevice (cross-platform, interruptible).
+    # so playback is gapless. Blocking writes into the persistent stream pace to
+    # real time; checking `interrupted` between chunks keeps barge-in responsive.
     since = os.path.getmtime(STOP) if os.path.exists(STOP) else 0.0
     q = queue.Queue(maxsize=2)
 
@@ -34,28 +68,39 @@ def speak(text, voice, speed):
                 samples, sr = kok.create(s, voice=voice, speed=speed, lang="en-us")
             except Exception:
                 continue
-            q.put((samples, sr))
-        q.put(None)
+            # Never block forever on a full queue: wake to recheck the interrupt
+            # so barge-in doesn't strand this thread in the long-lived daemon.
+            while True:
+                if interrupted(since):
+                    return
+                try:
+                    q.put((samples, sr), timeout=0.2)
+                    break
+                except queue.Full:
+                    pass
+        try:
+            q.put(None, timeout=0.2)
+        except queue.Full:
+            pass
 
     threading.Thread(target=produce, daemon=True).start()
 
     while True:
         item = q.get()
-        if item is None or interrupted(since):
-            sd.stop()
+        if item is None:
+            return
+        if interrupted(since):
+            drop_stream()
             return
         samples, sr = item
-        sd.play(samples, sr)
-        while True:
-            try:
-                if not sd.get_stream().active:
-                    break
-            except Exception:
-                break
+        stream = output_stream(sr)
+        data = np.ascontiguousarray(samples, dtype="float32")
+        step = max(1, int(sr * 0.05))
+        for i in range(0, len(data), step):
             if interrupted(since):
-                sd.stop()
+                drop_stream()  # abort flushes the buffer for an instant cut
                 return
-            time.sleep(0.03)
+            stream.write(data[i:i + step])
 
 
 if os.path.exists(SOCK):

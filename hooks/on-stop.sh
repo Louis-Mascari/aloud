@@ -18,6 +18,13 @@ fi
 [ -n "$pane" ] && printf '%s\n' "$msg" >> "$QUEUE_DIR/$pane"
 voice_set_last "$pane" "$msg"
 voice_set_state "$pane" ready
-# Soft nudge for a background finish. Best-effort focus check; a stray ping is harmless.
-if [ "$mode" = auto ] && ! voice_is_focused "$pane"; then voice_ping "$VOICE_SOUND_READY"; fi
+
+if [ "$mode" = auto ] && [ -z "$pane" ] && voice_is_focused "" && [ "$VOICE_AUTO_SPEAK" = true ]; then
+  # No WezTerm poll to drive playback (plain terminal): speak the recap right here,
+  # so voice-out works without WezTerm. Under WezTerm the update-status poll speaks.
+  voice_say "$msg"
+elif [ "$mode" = auto ] && ! voice_is_focused "$pane"; then
+  # Background finish under WezTerm: soft nudge; the poll speaks it when you return.
+  voice_ping "$VOICE_SOUND_READY"
+fi
 exit 0

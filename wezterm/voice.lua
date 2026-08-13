@@ -11,6 +11,7 @@ local M = {}
 
 local STATE_DIR = wezterm.home_dir .. '/.claude/voice/state'
 -- A tab lights up only when it needs you or is done; "working" stays plain.
+-- Colors are one theme's green/amber/red (swap for your own).
 local GLYPH = {
   ready = { g = '✓', c = '#76946a' }, -- green: done, review/next
   input = { g = '⏸', c = '#e6c384' }, -- amber: blocked on you
@@ -22,6 +23,34 @@ local function state_of(pane_id)
   local f = io.open(STATE_DIR .. '/' .. tostring(pane_id), 'r')
   if not f then return nil end
   local s = f:read 'l'; f:close(); return s
+end
+
+-- Most urgent state across ALL panes in a tab, not just its active pane, so a
+-- Claude pane split behind an idle zsh still lights the tab. error > input > ready.
+-- Enumerated via the mux (matched by tab_id), which is reliable across versions.
+local TAB_PRIORITY = { 'error', 'input', 'ready' }
+local function tab_state(tab)
+  local seen = {}
+  local ok = pcall(function()
+    for _, w in ipairs(wezterm.mux.all_windows()) do
+      for _, t in ipairs(w:tabs()) do
+        if t:tab_id() == tab.tab_id then
+          for _, p in ipairs(t:panes()) do
+            local s = state_of(p:pane_id())
+            if s then seen[s] = true end
+          end
+        end
+      end
+    end
+  end)
+  if not ok then                                    -- mux unavailable: at least the active pane
+    local s = state_of(tab.active_pane.pane_id)
+    if s then seen[s] = true end
+  end
+  for _, s in ipairs(TAB_PRIORITY) do
+    if seen[s] then return s end
+  end
+  return nil
 end
 
 -- Live pane ids across all windows (nil if the mux call fails).
@@ -67,10 +96,10 @@ local function badge_cells()
 end
 
 function M.apply(config, voice_bin)
-  local BIN = voice_bin or (wezterm.home_dir .. '/Desktop/personal/claude-voice/bin/voice')
+  local BIN = voice_bin or (wezterm.home_dir .. '/claude-voice/bin/voice')
 
   wezterm.on('format-tab-title', function(tab)
-    local vg = tab.is_active and nil or GLYPH[state_of(tab.active_pane.pane_id) or '']
+    local vg = tab.is_active and nil or GLYPH[tab_state(tab) or '']
     local label = ' ' .. (tab.tab_index + 1) .. '· ' .. (tab.active_pane.title or '') .. ' '
     if vg then
       return {

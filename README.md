@@ -101,7 +101,8 @@ Then, if you use WezTerm, apply `wezterm/INTEGRATE.md` to your `wezterm.lua` (`~
 (tab glyphs + speak-on-return). Start a **new** Claude Code session so the hooks
 load. That's it.
 
-Needs `jq` and macOS `say` (both standard/`brew install jq`).
+Needs `jq` and a TTS backend: macOS ships `say`; on Linux install `spd-say`
+(speech-dispatcher) or `espeak-ng`. (`brew install jq` / `apt install jq`.)
 
 Put the `voice` command on your PATH so it works from any directory:
 

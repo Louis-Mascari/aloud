@@ -9,8 +9,12 @@ SETTINGS="$CLAUDE_DIR/settings.json"
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 ts="$(date +%Y%m%d-%H%M%S)"
 
-command -v jq  >/dev/null || { echo "need jq: brew install jq"; exit 1; }
-command -v say >/dev/null || { echo "need macOS 'say' (this targets macOS)"; exit 1; }
+command -v jq  >/dev/null || { echo "need jq: 'brew install jq' (macOS) / 'apt install jq' (Linux)"; exit 1; }
+# Need at least one text-to-speech backend. macOS ships 'say'; on Linux install
+# speech-dispatcher ('spd-say') or espeak. Kokoro (neural) is an optional add-on.
+command -v say >/dev/null || command -v spd-say >/dev/null \
+  || command -v espeak-ng >/dev/null || command -v espeak >/dev/null \
+  || { echo "need a TTS backend: macOS 'say', or on Linux 'spd-say'/'espeak-ng' (e.g. 'apt install speech-dispatcher espeak-ng')"; exit 1; }
 
 echo "repo: $REPO"
 chmod +x "$REPO"/hooks/*.sh "$REPO"/bin/voice

@@ -24,24 +24,24 @@ a stale glyph or speak a dead session's summary.
 ```mermaid
 flowchart TD
     U["UserPromptSubmit"] --> W["state = working<br/>task = the prompt"]
-    S["Stop hook<br/>(reads Claude's 🔊 line)"] --> R["queue += summary<br/>last = summary<br/>state = ready"]
+    S["Stop hook<br/>reads the recap line"] --> R["queue += summary<br/>last = summary<br/>state = ready"]
     SF["StopFailure"] --> E["state = error"]
     N["Notification"] --> NB{"blocking?"}
     NB -->|"permission / elicitation / needs-input"| I["state = input"]
     NB -->|"idle"| IR["state = ready"]
-    SE["SessionStart / SessionEnd"] --> C["clear this pane's files"]
+    SE["SessionStart / SessionEnd"] --> C["wipe the pane state files"]
 ```
 
 ## WezTerm reads that state
 
 ```mermaid
 flowchart LR
-    subgraph tab["format-tab-title (inactive tabs)"]
-        G["state file becomes a<br/>colored glyph ✓ ⏸ ✗"]
+    subgraph tab["format-tab-title, inactive tabs"]
+        G["state file becomes a<br/>colored glyph per state"]
     end
-    subgraph bar["update-status (about 1/sec)"]
-        B["count action states into<br/>a badge ✗ ⏸"]
-        F{"focused pane:<br/>queue or done?"} -->|"speak (auto), mark seen"| SP(["clear queue + ready glyph"])
+    subgraph bar["update-status, about 1 per sec"]
+        B["count action states<br/>into a badge"]
+        F{"focused pane:<br/>queue or done?"} -->|"speak in auto, mark seen"| SP(["clear queue and glyph"])
     end
     K1["CMD+SHIFT+V drain"] --> SP
     K2["CMD+SHIFT+R recap"] --> RC(["replay last summary from the top"])

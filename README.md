@@ -35,8 +35,8 @@ per-tab glyphs, so there you get the voice half only.
 
 ```mermaid
 flowchart LR
-    CC["Claude ends its reply<br/>with a 🔊 recap line"] -->|"Stop hook fires"| Q["the hook queues that line<br/>and flags the tab ✓<br/>(soft ping if it's a background tab)"]
-    Q -->|"the tab you're on"| SAY(["speak it"])
+    CC["Claude ends its reply<br/>with a recap line"] -->|"Stop hook fires"| Q["the hook queues that line<br/>and flags the tab as done<br/>soft ping if backgrounded"]
+    Q -->|"the tab you are on"| SAY(["speak it"])
     Q -.->|"you switch to that tab"| SAY
     Q -.->|"or press CMD+SHIFT+V"| SAY
 ```

@@ -78,10 +78,14 @@ def speak(text, voice, speed):
                     break
                 except queue.Full:
                     pass
-        try:
-            q.put(None, timeout=0.2)
-        except queue.Full:
-            pass
+        while True:                     # deliver the terminator reliably; dropping
+            if interrupted(since):      # it would hang the consumer and wedge the daemon
+                return
+            try:
+                q.put(None, timeout=0.2)
+                break
+            except queue.Full:
+                pass
 
     threading.Thread(target=produce, daemon=True).start()
 
@@ -112,8 +116,16 @@ print("kokoro daemon ready", flush=True)
 
 while True:
     conn, _ = srv.accept()
-    data = conn.recv(65536).decode("utf-8", "replace")
+    # Read until the client closes: one recv() can return a partial message on a
+    # stream socket, which would speak a truncated recap (cut off mid-paragraph).
+    chunks = []
+    while True:
+        b = conn.recv(65536)
+        if not b:
+            break
+        chunks.append(b)
     conn.close()
+    data = b"".join(chunks).decode("utf-8", "replace")
     try:
         voice, speed, text = data.split("\t", 2)
         speak(text, voice or DEF_VOICE, float(speed or DEF_SPEED))

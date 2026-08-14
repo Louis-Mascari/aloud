@@ -83,15 +83,17 @@ case "${1:-status}" in
     else printf '\nVOICE_AUTO_SPEAK=%s\n' "$new" >> "$cfg"; fi
     [ "$new" = true ] && echo "auto-speak ON (speaks on switch/finish)" || echo "auto-speak OFF (silent; press drain/replay to hear)" ;;
 
-  # pool [voice ...] | off — set the per-pane Kokoro voice pool (and enable it),
-  # disable it, or show the current setting. Audition names with `voice voices`.
+  # pool on|off | <voice ...> — enable per-pane voices with the current pool,
+  # disable, set a custom pool (and enable), or bare to show. Names: `voice voices`.
   pool)
     shift
-    if [ "${1:-}" = off ]; then _cfg_set VOICE_PANE_VOICES false; echo "per-pane voices: off"
-    elif [ -n "${1:-}" ]; then
-      _cfg_set VOICE_PANE_VOICES true; _cfg_set VOICE_PANE_VOICE_POOL "\"$*\""
-      echo "per-pane voices: on  |  pool: $*"
-    else echo "per-pane voices: $VOICE_PANE_VOICES  |  pool: $VOICE_PANE_VOICE_POOL"; fi ;;
+    case "${1:-}" in
+      off) _cfg_set VOICE_PANE_VOICES false; echo "per-pane voices: off" ;;
+      on)  _cfg_set VOICE_PANE_VOICES true;  echo "per-pane voices: on  |  pool: $VOICE_PANE_VOICE_POOL" ;;
+      '')  echo "per-pane voices: $VOICE_PANE_VOICES  |  pool: $VOICE_PANE_VOICE_POOL" ;;
+      *)   _cfg_set VOICE_PANE_VOICES true; _cfg_set VOICE_PANE_VOICE_POOL "\"$*\""
+           echo "per-pane voices: on  |  pool: $*" ;;
+    esac ;;
 
   # help — one-screen cheatsheet.
   help)
@@ -112,7 +114,7 @@ Voice & speed:
   voice voices [af|am|bf|bm]   hear the voices (space next, p back, q quit)
   voice use <name>             pick a voice
   voice speed 1.2              1.0 = normal, higher = faster
-  voice pool <names…>|off      per-pane voices: a distinct voice per session
+  voice pool on|off|<names…>   per-pane voices: a distinct voice per session
 
   Cmd+Shift+/  this menu        config: ~/.claude/voice/config.sh
 H

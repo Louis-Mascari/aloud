@@ -27,6 +27,13 @@ _recap() {
   voice_say_sync_pane "$p" "$line"
 }
 
+# Write KEY=VAL into config.sh (replace existing line or append).
+_cfg_set() {
+  local cfg="$VOICE_DIR/config.sh" k="$1" val="$2"; touch "$cfg"
+  if grep -q "^$k=" "$cfg"; then sed -i.bak "s#^$k=.*#$k=$val#" "$cfg" && rm -f "$cfg.bak"
+  else printf '%s=%s\n' "$k" "$val" >> "$cfg"; fi
+}
+
 case "${1:-status}" in
   auto)   echo auto > "$MODE_FILE"; echo "voice: auto — speaks in the focused pane" ;;
   wait)   echo wait > "$MODE_FILE"; echo "voice: wait — silent; press the drain key to hear a pane" ;;
@@ -76,6 +83,16 @@ case "${1:-status}" in
     else printf '\nVOICE_AUTO_SPEAK=%s\n' "$new" >> "$cfg"; fi
     [ "$new" = true ] && echo "auto-speak ON (speaks on switch/finish)" || echo "auto-speak OFF (silent; press drain/replay to hear)" ;;
 
+  # pool [voice ...] | off — set the per-pane Kokoro voice pool (and enable it),
+  # disable it, or show the current setting. Audition names with `voice voices`.
+  pool)
+    shift
+    if [ "${1:-}" = off ]; then _cfg_set VOICE_PANE_VOICES false; echo "per-pane voices: off"
+    elif [ -n "${1:-}" ]; then
+      _cfg_set VOICE_PANE_VOICES true; _cfg_set VOICE_PANE_VOICE_POOL "\"$*\""
+      echo "per-pane voices: on  |  pool: $*"
+    else echo "per-pane voices: $VOICE_PANE_VOICES  |  pool: $VOICE_PANE_VOICE_POOL"; fi ;;
+
   # help — one-screen cheatsheet.
   help)
     cat <<'H'
@@ -95,6 +112,7 @@ Voice & speed:
   voice voices [af|am|bf|bm]   hear the voices (space next, p back, q quit)
   voice use <name>             pick a voice
   voice speed 1.2              1.0 = normal, higher = faster
+  voice pool <names…>|off      per-pane voices: a distinct voice per session
 
   Cmd+Shift+/  this menu        config: ~/.claude/voice/config.sh
 H
@@ -165,5 +183,5 @@ H
     [ "$e" -gt 0 ] && _a "✗$e"; [ "$i" -gt 0 ] && _a "⏸$i"; [ "$r" -gt 0 ] && _a "✓$r"
     printf '%s\n' "$out" ;;
 
-  *) echo "usage: voice {help|voices|use|speed|autospeak|auto|wait|toggle|status|stop|drain|recap|jump|attention}"; exit 2 ;;
+  *) echo "usage: voice {help|voices|use|speed|pool|autospeak|auto|wait|toggle|status|stop|drain|recap|jump|attention}"; exit 2 ;;
 esac

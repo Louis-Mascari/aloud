@@ -7,6 +7,7 @@ QUEUE_DIR="$VOICE_DIR/queue"   # pending spoken summary per pane
 STATE_DIR="$VOICE_DIR/state"   # working|ready|input|error  -> tab glyph
 TASK_DIR="$VOICE_DIR/task"     # short name of what the session is doing
 LAST_DIR="$VOICE_DIR/last"     # last spoken summary, kept for on-demand recap
+PANEVOICE_DIR="$VOICE_DIR/panevoice"   # per-pane Kokoro voice assignment (when enabled)
 MODE_FILE="$VOICE_DIR/mode"
 
 # Optional user overrides (voice, rate, backend, sounds), sourced if present.
@@ -25,7 +26,8 @@ VOICE_KOKORO_SPEED="${VOICE_KOKORO_SPEED:-1.0}"
 # Per-pane voices: give each pane its own Kokoro voice so concurrent sessions
 # are distinguishable by ear. Off = every pane uses VOICE_KOKORO_VOICE.
 VOICE_PANE_VOICES="${VOICE_PANE_VOICES:-false}"
-VOICE_PANE_VOICE_POOL="${VOICE_PANE_VOICE_POOL:-af_heart af_sarah am_adam am_michael bf_emma bm_george}"
+# Default pool = Kokoro's top-graded English voices (A to B-); curate with `voice pool`.
+VOICE_PANE_VOICE_POOL="${VOICE_PANE_VOICE_POOL:-af_heart af_bella af_nicole bf_emma}"
 
 # true = speak on switch/finish; false = silent (never auto-speaks; you press a key).
 VOICE_AUTO_SPEAK="${VOICE_AUTO_SPEAK:-true}"
@@ -44,21 +46,36 @@ voice_say()      { voice_speak "$1"; }
 voice_say_sync() { voice_speak_sync "$1"; }
 voice_ping()     { voice_play "$1"; }
 
-# Kokoro voice for a pane: a stable pick from the pool when per-pane voices are
-# on, else the single configured voice. (Kokoro only; `say` uses VOICE_SAY_VOICE.)
+# Kokoro voice for a pane (Kokoro only; `say` uses VOICE_SAY_VOICE). Off, or a
+# non-pane caller, gets the single configured voice. On, a pane is assigned a
+# voice once and keeps it for life; the assignment prefers one no other live pane
+# holds, so concurrent sessions stay distinct until the pool is exhausted.
 voice_pane_voice() {
   case "$1" in ''|*[!0-9]*) printf '%s' "$VOICE_KOKORO_VOICE"; return;; esac
   [ "$VOICE_PANE_VOICES" = true ] || { printf '%s' "$VOICE_KOKORO_VOICE"; return; }
   local -a pool; read -r -a pool <<<"$VOICE_PANE_VOICE_POOL"
-  [ "${#pool[@]}" -gt 0 ] || { printf '%s' "$VOICE_KOKORO_VOICE"; return; }
-  printf '%s' "${pool[$(( $1 % ${#pool[@]} ))]}"
+  local n=${#pool[@]}
+  [ "$n" -gt 0 ] || { printf '%s' "$VOICE_KOKORO_VOICE"; return; }
+  mkdir -p "$PANEVOICE_DIR"
+  local f="$PANEVOICE_DIR/$1" v
+  v="$(cat "$f" 2>/dev/null)"; [ -n "$v" ] && { printf '%s' "$v"; return; }
+  local used=" " g id
+  for g in "$PANEVOICE_DIR"/*; do
+    [ -e "$g" ] || continue; id="${g##*/}"; [ "$id" = "$1" ] && continue
+    [ -e "$LAST_DIR/$id" ] || { rm -f "$g"; continue; }   # dead pane: free its voice
+    used="$used$(cat "$g" 2>/dev/null) "
+  done
+  local cand
+  for cand in "${pool[@]}"; do case "$used" in *" $cand "*) ;; *) v="$cand"; break;; esac; done
+  [ -n "$v" ] || v="${pool[$(( $1 % n ))]}"          # all in use: reuse deterministically
+  printf '%s' "$v" > "$f"; printf '%s' "$v"
 }
 # Speak in a pane's voice; the subshell scopes the per-pane voice override.
 voice_say_pane()      { ( VOICE_KOKORO_VOICE="$(voice_pane_voice "$1")"; voice_say "$2" ); }
 voice_say_sync_pane() { ( VOICE_KOKORO_VOICE="$(voice_pane_voice "$1")"; voice_say_sync "$2" ); }
 
 voice_init() {
-  mkdir -p "$QUEUE_DIR" "$STATE_DIR" "$TASK_DIR" "$LAST_DIR"
+  mkdir -p "$QUEUE_DIR" "$STATE_DIR" "$TASK_DIR" "$LAST_DIR" "$PANEVOICE_DIR"
   command -v jq >/dev/null || echo "claude-voice: jq not found; summaries disabled" >&2
 }
 
@@ -87,7 +104,7 @@ voice_set_state()   { _voice_put "$1" "$STATE_DIR" "$2"; }
 voice_set_task()    { _voice_put "$1" "$TASK_DIR" "$2"; }
 voice_set_last()    { _voice_put "$1" "$LAST_DIR" "$2"; }
 voice_clear_state() { [ -n "$1" ] && rm -f "$STATE_DIR/$1"; }
-voice_clear_pane()  { [ -n "$1" ] && rm -f "$STATE_DIR/$1" "$QUEUE_DIR/$1" "$QUEUE_DIR/$1".speaking "$QUEUE_DIR/$1".drain.* "$TASK_DIR/$1" "$LAST_DIR/$1"; }
+voice_clear_pane()  { [ -n "$1" ] && rm -f "$STATE_DIR/$1" "$QUEUE_DIR/$1" "$QUEUE_DIR/$1".speaking "$QUEUE_DIR/$1".drain.* "$TASK_DIR/$1" "$LAST_DIR/$1" "$PANEVOICE_DIR/$1"; }
 
 # Triage rank: higher = more urgent. Drives the aggregate badge and `voice jump`.
 voice_rank() { case "$1" in error) echo 3;; input) echo 2;; ready) echo 1;; *) echo 0;; esac; }

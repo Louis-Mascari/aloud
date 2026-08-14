@@ -8,6 +8,8 @@
 # VOICE_KOKORO_VOICE=af_heart   # af_sarah, am_adam, am_michael, bf_emma, bm_george, ...
 # VOICE_KOKORO_SPEED=1.0        # or: voice speed 1.2
 # VOICE_AUTO_SPEAK=true         # false = never auto-speaks; press a key to hear (voice autospeak off)
+# VOICE_PANE_VOICES=true        # give each pane its own Kokoro voice, to tell concurrent sessions apart
+# VOICE_PANE_VOICE_POOL="af_heart af_sarah am_adam am_michael bf_emma bm_george"   # cycled by pane
 
 # --- Audio backend (auto-detected from PATH; set to force or on Windows) -------
 # speak: say (macOS) / spd-say / espeak-ng / espeak; play: afplay / paplay / aplay / ...

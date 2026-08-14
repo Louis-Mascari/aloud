@@ -24,7 +24,7 @@ _recap() {
     [ -n "$task" ] && line="$task. $line"
   fi
   voice_stop                           # cut any current playback so it restarts from the top
-  voice_say_sync "$line"
+  voice_say_sync_pane "$p" "$line"
 }
 
 case "${1:-status}" in
@@ -106,7 +106,7 @@ H
   drain)
     p="${2:-${WEZTERM_PANE:-}}"; q="$QUEUE_DIR/$p"; c="$q.drain.$$"
     if [ -n "$p" ] && mv "$q" "$c" 2>/dev/null; then
-      voice_clear_state "$p"; voice_say_sync "$(cat "$c")"; rm -f "$c"
+      voice_clear_state "$p"; voice_say_sync_pane "$p" "$(cat "$c")"; rm -f "$c"
     else
       _recap "${p:-${WEZTERM_PANE:-}}"
     fi ;;
@@ -120,7 +120,7 @@ H
     [ "$(voice_mode)" = auto ] || exit 0
     q="$QUEUE_DIR/$p"; c="$q.speaking"
     mv "$q" "$c" 2>/dev/null || exit 0
-    voice_say_sync "$(cat "$c")"; rm -f "$c" ;;
+    voice_say_sync_pane "$p" "$(cat "$c")"; rm -f "$c" ;;
 
   # switched <pane> — you moved to a new pane: cut the pane you left off mid-speech,
   # then mark this one seen and speak its queued summary.
@@ -133,7 +133,7 @@ H
     [ "$(voice_mode)" = auto ] || exit 0
     q="$QUEUE_DIR/$p"; c="$q.speaking"
     mv "$q" "$c" 2>/dev/null || exit 0
-    voice_say_sync "$(cat "$c")"; rm -f "$c" ;;
+    voice_say_sync_pane "$p" "$(cat "$c")"; rm -f "$c" ;;
 
   # recap [pane] — say what this tab is doing right now, on demand.
   recap) _recap "${2:-${WEZTERM_PANE:-}}" ;;

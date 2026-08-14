@@ -22,6 +22,11 @@ KOKORO_SAY="${KOKORO_SAY:-$_VOICE_LIB_DIR/../bin/kokoro-say}"
 VOICE_KOKORO_VOICE="${VOICE_KOKORO_VOICE:-af_heart}"
 VOICE_KOKORO_SPEED="${VOICE_KOKORO_SPEED:-1.0}"
 
+# Per-pane voices: give each pane its own Kokoro voice so concurrent sessions
+# are distinguishable by ear. Off = every pane uses VOICE_KOKORO_VOICE.
+VOICE_PANE_VOICES="${VOICE_PANE_VOICES:-false}"
+VOICE_PANE_VOICE_POOL="${VOICE_PANE_VOICE_POOL:-af_heart af_sarah am_adam am_michael bf_emma bm_george}"
+
 # true = speak on switch/finish; false = silent (never auto-speaks; you press a key).
 VOICE_AUTO_SPEAK="${VOICE_AUTO_SPEAK:-true}"
 
@@ -38,6 +43,19 @@ VOICE_SOUND_WAIT="${VOICE_SOUND_WAIT:-/System/Library/Sounds/Submarine.aiff}"
 voice_say()      { voice_speak "$1"; }
 voice_say_sync() { voice_speak_sync "$1"; }
 voice_ping()     { voice_play "$1"; }
+
+# Kokoro voice for a pane: a stable pick from the pool when per-pane voices are
+# on, else the single configured voice. (Kokoro only; `say` uses VOICE_SAY_VOICE.)
+voice_pane_voice() {
+  case "$1" in ''|*[!0-9]*) printf '%s' "$VOICE_KOKORO_VOICE"; return;; esac
+  [ "$VOICE_PANE_VOICES" = true ] || { printf '%s' "$VOICE_KOKORO_VOICE"; return; }
+  local -a pool; read -r -a pool <<<"$VOICE_PANE_VOICE_POOL"
+  [ "${#pool[@]}" -gt 0 ] || { printf '%s' "$VOICE_KOKORO_VOICE"; return; }
+  printf '%s' "${pool[$(( $1 % ${#pool[@]} ))]}"
+}
+# Speak in a pane's voice; the subshell scopes the per-pane voice override.
+voice_say_pane()      { ( VOICE_KOKORO_VOICE="$(voice_pane_voice "$1")"; voice_say "$2" ); }
+voice_say_sync_pane() { ( VOICE_KOKORO_VOICE="$(voice_pane_voice "$1")"; voice_say_sync "$2" ); }
 
 voice_init() {
   mkdir -p "$QUEUE_DIR" "$STATE_DIR" "$TASK_DIR" "$LAST_DIR"

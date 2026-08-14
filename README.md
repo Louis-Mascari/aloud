@@ -191,6 +191,7 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `VOICE_KOKORO_VOICE` | Kokoro voice — `voice voices` to audition, `voice use <v>` to set |
 | `VOICE_KOKORO_SPEED` | speaking speed, 1.0 = normal — or `voice speed 1.2` |
 | `VOICE_AUTO_SPEAK` | `true` (speak on switch/finish) or `false` (silent; `voice autospeak off`) |
+| `VOICE_PANE_VOICES` | `true` gives each pane its own Kokoro voice, so you can tell concurrent sessions apart by ear (default off) |
 | `VOICE_SAY_VOICE` / `VOICE_SAY_RATE` | macOS `say` voice + words/min |
 | `VOICE_SPEAK_CMD` / `VOICE_PLAY_CMD` | force the audio backend (Linux/Windows) |
 | `VOICE_SOUND_*` | cue sounds (path, or `""` to silence one) |

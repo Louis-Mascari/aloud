@@ -82,6 +82,11 @@ while the current one plays (via cross-platform `sounddevice`) — gapless. `voi
 stop` touches an interrupt file the daemon checks between and within sentences, so
 barge-in cuts a summary mid-way.
 
+Before synthesis the text is sanitized (`voice_sanitize`) to drop markup that reads
+badly aloud — code ticks, URLs, emphasis, table pipes. A turn that omits the 🔊 line
+still speaks a short "Done." rather than going silent. With `VOICE_PANE_VOICES=true`,
+each pane draws a stable voice from a pool so concurrent sessions sound distinct.
+
 ## Portability
 
 The state files are the portable contract; WezTerm is one adapter (tmux/kitty can

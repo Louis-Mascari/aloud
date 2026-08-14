@@ -9,11 +9,7 @@ mode="$(voice_mode)"
 
 # The summary is the last line that STARTS with the 🔊 marker (prose may mention it earlier).
 msg="$(jq -r '.last_assistant_message // empty' | grep '^[[:space:]]*🔊' | tail -1 | sed 's/.*🔊[[:space:]]*//')"
-
-if [ -z "$msg" ]; then
-  voice_set_state "$pane" ready   # no summary line, but the turn is done
-  exit 0
-fi
+[ -z "$msg" ] && msg="Done."   # forgotten 🔊 marker: a short cue beats silence
 
 [ -n "$pane" ] && printf '%s\n' "$msg" >> "$QUEUE_DIR/$pane"
 voice_set_last "$pane" "$msg"
@@ -22,7 +18,7 @@ voice_set_state "$pane" ready
 if [ "$mode" = auto ] && [ -z "$pane" ] && voice_is_focused "" && [ "$VOICE_AUTO_SPEAK" = true ]; then
   # No WezTerm poll to drive playback (plain terminal): speak the recap right here,
   # so voice-out works without WezTerm. Under WezTerm the update-status poll speaks.
-  voice_say "$msg"
+  voice_say_pane "$pane" "$msg"
 elif [ "$mode" = auto ] && ! voice_is_focused "$pane"; then
   # Background finish under WezTerm: soft nudge; the poll speaks it when you return.
   voice_ping "$VOICE_SOUND_READY"

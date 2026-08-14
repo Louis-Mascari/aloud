@@ -37,12 +37,24 @@ _va_native_speak() {
   esac
 }
 
+# Strip markup that reads badly aloud: markdown links, URLs, code ticks,
+# emphasis/heading/table punctuation. A safety net for the plain-line rule.
+voice_sanitize() {
+  printf '%s' "$1" | sed -E \
+    -e 's/\[([^]]+)\]\([^)]+\)/\1/g' \
+    -e 's#https?://[^[:space:]]+#link#g' \
+    -e 's/`+([^`]*)`+/\1/g' \
+    -e 's/[*_#>|]//g' | tr -s ' '
+}
+
 # Speak one string. Kokoro (warm daemon) if selected, else the native engine.
 _va_speak() {
+  local t; t="$(voice_sanitize "$1")"
+  [ -n "$t" ] || return 0
   if [ "$VOICE_TTS" = kokoro ] && [ -x "$KOKORO_SAY" ]; then
-    "$KOKORO_SAY" "$1" "$VOICE_KOKORO_VOICE" "$VOICE_KOKORO_SPEED" && return 0
+    "$KOKORO_SAY" "$t" "$VOICE_KOKORO_VOICE" "$VOICE_KOKORO_SPEED" && return 0
   fi
-  _va_native_speak "$1"
+  _va_native_speak "$t"
 }
 
 # async (hooks). Warn in the foreground so a missing backend actually surfaces.

@@ -9,13 +9,13 @@ K="${KOKORO_DIR:-$HOME/.claude/voice/kokoro}"
 py="$K/.venv/bin/python"; sock="$K/daemon.sock"
 [ -x "$py" ] && [ -f "$K/daemon.py" ] || exit 1
 
-if [ ! -S "$sock" ]; then
+start_daemon() {
   VOICE_KOKORO_VOICE="$voice" VOICE_KOKORO_SPEED="$speed" \
     nohup "$py" "$K/daemon.py" >"$K/daemon.log" 2>&1 &
   for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do [ -S "$sock" ] && break; sleep 0.5; done
-fi
-
-"$py" -c '
+}
+send() {
+  "$py" -c '
 import socket, sys
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 try:
@@ -24,4 +24,10 @@ try:
     s.close()
 except Exception:
     sys.exit(1)
-' "$sock" "$voice" "$speed" "$text" || exit 1
+' "$sock" "$voice" "$speed" "$text"
+}
+
+[ -S "$sock" ] || start_daemon
+# A crashed daemon leaves a stale socket that refuses connections; the presence
+# check above can't see that. On send failure, clear it, restart once, retry.
+send || { rm -f "$sock"; start_daemon; send; } || exit 1

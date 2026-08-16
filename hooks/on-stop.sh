@@ -11,7 +11,9 @@ mode="$(voice_mode)"
 msg="$(jq -r '.last_assistant_message // empty' | grep '^[[:space:]]*🔊' | tail -1 | sed 's/.*🔊[[:space:]]*//')"
 [ -z "$msg" ] && msg="Done."   # forgotten 🔊 marker: a short cue beats silence
 
-[ -n "$pane" ] && printf '%s\n' "$msg" >> "$QUEUE_DIR/$pane"
+# auto only: wait mode (meetings) must not accumulate a queue that blurts on return.
+# The last summary is still recorded below, so drain/recap speaks the latest on demand.
+[ -n "$pane" ] && [ "$mode" = auto ] && printf '%s\n' "$msg" >> "$QUEUE_DIR/$pane"
 voice_set_last "$pane" "$msg"
 voice_set_state "$pane" ready
 

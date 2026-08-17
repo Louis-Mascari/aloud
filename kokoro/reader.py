@@ -69,7 +69,7 @@ class Player:
             if voice:
                 self.voice = voice
             if speed:
-                self.speed = speed
+                self.speed = max(0.5, min(2.0, speed))
             self.paused = not pairs
             self.gen += 1
         self.wake.set()
@@ -252,7 +252,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _ok(self):
         self._send(200, json.dumps(player.status()), "application/json")
 
+    def _guard(self):
+        # Loopback bind isn't enough: any web page the user visits can POST to
+        # 127.0.0.1, and a DNS-rebinding page can read /pdf's bytes. The Host
+        # allowlist defeats rebinding (the rebound request carries the attacker
+        # host); the Sec-Fetch-Site check rejects ordinary cross-origin calls.
+        host = self.headers.get("Host", "")
+        if host not in (f"127.0.0.1:{PORT}", f"localhost:{PORT}"):
+            self._send(403, "forbidden")
+            return False
+        site = self.headers.get("Sec-Fetch-Site")
+        if site is not None and site not in ("same-origin", "none"):
+            self._send(403, "forbidden")
+            return False
+        return True
+
     def do_GET(self):
+        if not self._guard():
+            return
         path = urllib.parse.urlparse(self.path).path
         if path in _STATIC:
             name, ctype = _STATIC[path]
@@ -276,6 +293,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send(404, "not found")
 
     def do_POST(self):
+        if not self._guard():
+            return
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
         n = int(self.headers.get("Content-Length", 0) or 0)
@@ -286,10 +305,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # side, so each sentence carries its source page for the PDF jump.
             parts = body.split("\t", 3)
             voice = parts[0] if len(parts) > 0 and parts[0] else None
-            speed = float(parts[1]) if len(parts) > 1 and parts[1] else None
             pages = parts[2] if len(parts) > 2 and parts[2] else None
             pdf_path = parts[3] if len(parts) > 3 and parts[3] else None
             try:
+                speed = float(parts[1]) if len(parts) > 1 and parts[1] else None
                 pairs, (lo, hi, npages) = pdf_extract.extract_sentences(pdf_path, pages)
                 if not pairs:
                     resp = {"ok": False, "error": "no extractable text (scanned image PDF? no OCR)"}

@@ -167,7 +167,7 @@ async function popOut(){
 }
 
 /* ---------- transport + teleprompter ---------- */
-let speed=1.0, lastIndex=-1, sentences=[], pageOf=[];
+let speed=1.0, lastIndex=-1, sentences=[], pageOf=[], pageOffset=[];
 window.cmd = async c => { try{ render(await (await fetch('/'+c,{method:'POST'})).json()); }catch(e){} };
 window.nudge = v => { speed=Math.max(0.5,Math.min(2,Math.round((speed+v)*10)/10)); fetch('/speed?v='+speed,{method:'POST'}).catch(()=>{}); };
 window.seekTo = i => fetch('/seek_to?index='+i,{method:'POST'}).then(r=>r.json()).then(render).catch(()=>{});
@@ -302,7 +302,10 @@ async function syncHighlight(index, sentence){
   await renderPage(rec);
   const q=normStr(sentence); if(q.length<4||!rec.norm) return;   // no match -> don't yank the view
   const head=q.slice(0,28), tail=q.slice(-28);
-  const s=rec.norm.indexOf(head); if(s<0) return;
+  // start near this sentence's expected position on the page so a repeated phrase
+  // matches the instance being read, not the first occurrence.
+  const from=Math.max(0,(pageOffset[index]||0)-40);
+  let s=rec.norm.indexOf(head, from); if(s<0) s=rec.norm.indexOf(head); if(s<0) return;
   const ep=rec.norm.indexOf(tail, s);
   const e=ep>=0 ? Math.min(rec.norm.length-1, ep+tail.length-1) : Math.min(rec.norm.length-1, s+q.length-1);
   const p0=rec.pos[s], p1=rec.pos[e];
@@ -364,6 +367,10 @@ const friendly=v=>v.slice(3).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase(
     const items=await (await fetch('/sentences')).json();
     pageOf=items.map(x=>x.p); sentences=items.map(x=>x.t);
     sentences.forEach((s,si)=>{ for(const ch of normStr(s)){ normS+=ch; mapS.push(si); } });
+    // per-sentence offset within its page (sum of earlier same-page sentence
+    // lengths), so a repeated phrase highlights the right instance, not the first.
+    { const per={}; for(let i=0;i<sentences.length;i++){ const p=pageOf[i], o=per[p]||0;
+        pageOffset[i]=o; per[p]=o+normStr(sentences[i]).length; } }
   }catch(e){}
   try{ pdfDoc=await pdfjsLib.getDocument('/pdf').promise; }
   catch(e){ pdfPane.innerHTML='<p style="color:var(--dim);margin-top:2em">No PDF to display.</p>'; poll(); return; }

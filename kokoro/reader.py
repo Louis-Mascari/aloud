@@ -24,12 +24,15 @@ import numpy as np
 import sounddevice as sd
 from kokoro_onnx import Kokoro
 
+import pdf_extract   # same dir; does extraction so the daemon knows each sentence's page
+
 K = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("VOICE_READER_PORT", "8477"))
 DEF_VOICE = os.environ.get("VOICE_KOKORO_VOICE", "af_heart")
 DEF_SPEED = float(os.environ.get("VOICE_KOKORO_SPEED", "1.0"))
 
 kok = Kokoro(os.path.join(K, "kokoro-v1.0.onnx"), os.path.join(K, "voices-v1.0.bin"))
+VOICES = sorted(kok.get_voices())
 
 
 class Player:
@@ -45,6 +48,7 @@ class Player:
         self.lock = threading.Lock()
         self.wake = threading.Event()
         self.sentences = []
+        self.pages = []          # 1-based source page per sentence (parallel to sentences)
         self.cursor = 0
         self.paused = True
         self.voice = DEF_VOICE
@@ -56,16 +60,17 @@ class Player:
         threading.Thread(target=self._run, daemon=True).start()
 
     # ---- commands (HTTP threads) ----
-    def load(self, sentences, voice, speed, pdf_path=None):
+    def load(self, pairs, voice, speed, pdf_path=None):
         with self.lock:
-            self.sentences = sentences
+            self.sentences = [t for t, _ in pairs]
+            self.pages = [p for _, p in pairs]
             self.pdf_path = pdf_path
             self.cursor = 0
             if voice:
                 self.voice = voice
             if speed:
                 self.speed = speed
-            self.paused = not sentences
+            self.paused = not pairs
             self.gen += 1
         self.wake.set()
 
@@ -117,6 +122,10 @@ class Player:
         # bump gen so the current sentence restarts at the new speed; clamp so a
         # raw POST that bypasses the UI can't pass 0 (undefined synth behavior).
         self._flag(speed=max(0.5, min(2.0, v)))
+
+    def set_voice(self, v):
+        if v in VOICES:
+            self._flag(voice=v)   # restart the current sentence in the new voice
 
     def status(self):
         with self.lock:
@@ -250,10 +259,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._file(os.path.join(WEBLIB, name), ctype)
         elif path == "/status":
             self._ok()
+        elif path == "/voices":
+            self._send(200, json.dumps(VOICES), "application/json")
         elif path == "/sentences":
             with player.lock:
-                sents = list(player.sentences)
-            self._send(200, json.dumps(sents), "application/json")
+                items = [{"t": t, "p": p} for t, p in zip(player.sentences, player.pages)]
+            self._send(200, json.dumps(items), "application/json")
         elif path == "/pdf":
             with player.lock:
                 pp = player.pdf_path
@@ -271,12 +282,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
         body = self.rfile.read(n).decode("utf-8", "replace") if n else ""
         p = u.path
         if p == "/load":
-            parts = body.split("\t", 3)   # voice \t speed \t pdf_path \t sentences
+            # voice \t speed \t pages \t abs-path. Extraction runs here, not client
+            # side, so each sentence carries its source page for the PDF jump.
+            parts = body.split("\t", 3)
             voice = parts[0] if len(parts) > 0 and parts[0] else None
             speed = float(parts[1]) if len(parts) > 1 and parts[1] else None
-            pdf_path = parts[2] if len(parts) > 2 and parts[2] else None
-            sents = [s for s in parts[3].split("\x1f") if s.strip()] if len(parts) > 3 else []
-            player.load(sents, voice, speed, pdf_path)
+            pages = parts[2] if len(parts) > 2 and parts[2] else None
+            pdf_path = parts[3] if len(parts) > 3 and parts[3] else None
+            try:
+                pairs, (lo, hi, npages) = pdf_extract.extract_sentences(pdf_path, pages)
+                if not pairs:
+                    resp = {"ok": False, "error": "no extractable text (scanned image PDF? no OCR)"}
+                else:
+                    player.load(pairs, voice, speed, pdf_path)
+                    resp = {"ok": True, "total": len(pairs), "lo": lo, "hi": hi, "pages": npages}
+            except ValueError as e:
+                resp = {"ok": False, "error": str(e)}
+            except Exception as e:
+                resp = {"ok": False, "error": f"cannot read PDF: {e}"}
+            return self._send(200, json.dumps(resp), "application/json")
         elif p == "/seek_to":
             try:
                 player.seek_to(int(q.get("index", ["0"])[0]))
@@ -299,6 +323,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 player.set_speed(float(q.get("v", ["1.0"])[0]))
             except ValueError:
                 pass
+        elif p == "/voice":
+            player.set_voice(q.get("v", [""])[0])
         else:
             return self._send(404, "not found")
         self._ok()

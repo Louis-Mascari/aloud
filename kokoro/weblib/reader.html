@@ -1,45 +1,77 @@
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PDF Reader</title>
+<title>Spit It Out</title>
 <link rel="icon" href="data:,">
 <style>
-:root{color-scheme:dark}
+:root{color-scheme:dark;
+ --bg:#141418;--panel:#1c1c23;--panel2:#0d0d10;--edge:#2b2b34;--fg:#eaeaf0;
+ --dim:#8b8b98;--accent:#3a6df0;--accent2:#4c7bf5;--hl:rgba(90,140,255,.38)}
 *{box-sizing:border-box}
 body{margin:0;height:100vh;display:flex;flex-direction:column;
- font:15px/1.5 -apple-system,system-ui,sans-serif;background:#15151a;color:#eaeaf0;overflow:hidden}
-#toolbar{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#1d1d24;border-bottom:1px solid #2b2b34;flex:0 0 auto}
+ font:15px/1.5 -apple-system,system-ui,sans-serif;background:var(--bg);color:var(--fg);overflow:hidden}
+#toolbar{display:flex;gap:6px;align-items:center;padding:8px 12px;background:var(--panel);
+ border-bottom:1px solid var(--edge);flex:0 0 auto}
 #toolbar .grow{flex:1}
-.tbtn{font-size:13px;background:#26262e;color:#eaeaf0;border:0;border-radius:8px;padding:7px 11px;cursor:pointer}
-.tbtn:hover{background:#33333d}.tbtn.on{background:#3a6df0}
+.tbtn{font-size:13px;background:#26262e;color:var(--fg);border:0;border-radius:8px;padding:7px 11px;cursor:pointer;white-space:nowrap}
+.tbtn:hover{background:#33333d}.tbtn.on{background:var(--accent)}
+#hint{font-size:12px;color:var(--dim)}
+#brand{font-weight:700;font-size:14px;letter-spacing:.2px;
+ background:linear-gradient(90deg,var(--accent),#8a5bf0);-webkit-background-clip:text;background-clip:text;color:transparent}
 #app{flex:1;display:flex;min-height:0;min-width:0}
 #app.col{flex-direction:column}
-#pdf{overflow:auto;background:#0d0d10;flex:1 1 60%;min-height:0;min-width:0;padding:12px;display:flex;flex-direction:column;align-items:center;gap:12px}
-#read{overflow:auto;flex:1 1 40%;min-height:0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:18px}
-#divider{flex:0 0 8px;background:#2b2b34;cursor:col-resize}
+#pdf{overflow:auto;background:var(--panel2);flex:1 1 60%;min-height:0;min-width:0;padding:14px;position:relative;
+ display:flex;flex-direction:column;align-items:center;gap:14px;scroll-behavior:smooth}
+#read{flex:1 1 40%;min-height:0;min-width:0;display:grid;grid-template-rows:1fr auto}
+#teleWrap{overflow:auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:22px 26px}
+#controls{border-top:1px solid var(--edge);background:var(--panel);padding:14px 18px 16px;
+ display:flex;flex-direction:column;align-items:center;gap:10px}
+#divider{flex:0 0 10px;background:var(--edge);cursor:col-resize;position:relative}
 #app.col #divider{cursor:row-resize}
-#divider:hover{background:#3a6df0}
+#divider::after{content:"";position:absolute;inset:0;margin:auto;background:#4a4a57;border-radius:3px}
+#app:not(.col) #divider::after{width:3px;height:34px}
+#app.col #divider::after{height:3px;width:34px}
+#divider:hover{background:var(--accent)}
 .hidden{display:none!important}
-.page{position:relative;box-shadow:0 1px 6px rgba(0,0,0,.5);background:#fff}
+.page{position:relative;box-shadow:0 2px 10px rgba(0,0,0,.55);background:#fff;flex:0 0 auto}
 .page canvas{display:block}
 .textLayer{position:absolute;inset:0;overflow:hidden;line-height:1;text-size-adjust:none;
  forced-color-adjust:none;transform-origin:0 0;caret-color:transparent;z-index:2}
 .textLayer span{color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0 0}
-.textLayer .hl{background:rgba(90,140,255,.38);border-radius:2px}
 .textLayer ::selection{background:rgba(90,140,255,.45)}
-#now{font-size:21px;line-height:1.55;text-align:center;max-width:46ch}
-#meta{font-size:12px;color:#9a9aa8}
-#bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
-#bar button{font-size:20px;background:#26262e;color:#eaeaf0;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;line-height:1}
+::highlight(sentence){background:var(--hl);border-radius:3px}
+.sep{width:1px;height:22px;background:var(--edge);margin:0 2px}
+.zlabel{font-size:12px;color:var(--dim);margin-left:4px}
+/* teleprompter */
+#tele{display:flex;flex-direction:column;gap:8px;align-items:center;max-width:52ch;width:100%}
+.line{text-align:center;cursor:pointer;border-radius:8px;padding:4px 8px;transition:color .15s}
+.line.ctx{font-size:calc(15px * var(--read-scale,1));color:var(--dim)}
+.line.ctx:hover{color:var(--fg);background:#20202a}
+.line.cur{font-size:calc(22px * var(--read-scale,1));line-height:1.5;color:var(--fg);cursor:default}
+#meta{font-size:12px;color:var(--dim);margin-top:2px}
+#prog{width:min(52ch,100%);height:6px;background:#26262e;border-radius:3px;cursor:pointer;overflow:hidden}
+#prog>div{height:100%;width:0;background:var(--accent);border-radius:3px;transition:width .2s}
+#bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:6px}
+#bar button{font-size:20px;background:#26262e;color:var(--fg);border:0;border-radius:10px;padding:10px 14px;cursor:pointer;line-height:1}
 #bar button:hover{background:#33333d}#bar button:active{transform:translateY(1px)}
-#play{font-size:24px!important;background:#3a6df0!important}#play:hover{background:#4c7bf5!important}
+#play{font-size:24px!important;background:var(--accent)!important}#play:hover{background:var(--accent2)!important}
 .spd{font-size:13px!important;padding:8px 10px!important}
-#hint{font-size:12px;color:#7a7a88}
+select#voice{font-size:13px;background:#26262e;color:var(--fg);border:0;border-radius:10px;padding:9px 10px;cursor:pointer;max-width:9rem}
 </style></head>
 <body>
 <div id="toolbar">
+ <span id="brand">Spit&nbsp;It&nbsp;Out</span>
+ <span class="sep"></span>
  <button class="tbtn" id="t-orient" title="side-by-side / stacked">◧ Layout</button>
- <button class="tbtn" id="t-pdf" title="show/hide PDF">PDF</button>
- <button class="tbtn" id="t-read" title="show/hide reader">Reader</button>
+ <button class="tbtn" id="t-pdf" title="show / hide PDF">PDF</button>
+ <button class="tbtn" id="t-read" title="show / hide reader">Reader</button>
+ <button class="tbtn" id="t-fit" title="fit PDF width to pane">Fit</button>
+ <span class="sep"></span>
+ <span class="zlabel">PDF</span>
+ <button class="tbtn" title="zoom PDF out (⌘-scroll)" onclick="zoomPdf(1/1.15)">−</button>
+ <button class="tbtn" title="zoom PDF in (⌘-scroll)" onclick="zoomPdf(1.15)">+</button>
+ <span class="zlabel">Text</span>
+ <button class="tbtn" title="smaller reader text" onclick="zoomText(-1)">A−</button>
+ <button class="tbtn" title="larger reader text" onclick="zoomText(1)">A+</button>
  <span class="grow"></span>
  <span id="hint">select text on the PDF to read from there</span>
 </div>
@@ -47,15 +79,25 @@ body{margin:0;height:100vh;display:flex;flex-direction:column;
  <div id="pdf"></div>
  <div id="divider"></div>
  <div id="read">
-  <div id="now">…</div>
-  <div id="meta"></div>
-  <div id="bar">
-   <button title="back" onclick="cmd('prev')">⏮</button>
-   <button id="play" title="play/pause" onclick="cmd('toggle')">▶</button>
-   <button title="skip forward (past junk)" onclick="cmd('next')">⏭</button>
-   <button title="stop" onclick="cmd('stop')">■</button>
-   <button class="spd" onclick="nudge(-0.1)">‹ slower</button>
-   <button class="spd" onclick="nudge(0.1)">faster ›</button>
+  <div id="teleWrap">
+   <div id="tele">
+    <div class="line ctx" id="prev"></div>
+    <div class="line cur" id="cur">…</div>
+    <div class="line ctx" id="next"></div>
+   </div>
+  </div>
+  <div id="controls">
+   <div id="prog"><div></div></div>
+   <div id="meta"></div>
+   <div id="bar">
+    <button title="back a sentence" onclick="cmd('prev')">⏮</button>
+    <button id="play" title="play / pause (Space)" onclick="cmd('toggle')">▶</button>
+    <button title="skip forward — past junk (→)" onclick="cmd('next')">⏭</button>
+    <button title="stop" onclick="cmd('stop')">■</button>
+    <button class="spd" onclick="nudge(-0.1)">‹ slower</button>
+    <button class="spd" onclick="nudge(0.1)">faster ›</button>
+    <select id="voice" title="voice"></select>
+   </div>
   </div>
  </div>
 </div>
@@ -63,164 +105,237 @@ body{margin:0;height:100vh;display:flex;flex-direction:column;
 <script type="module">
 import * as pdfjsLib from '/lib/pdf.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/lib/pdf.worker.mjs';
-
 const $ = s => document.querySelector(s);
-const app = $('#app'), pdfPane = $('#pdf'), readPane = $('#read'), divider = $('#divider');
+const app=$('#app'), pdfPane=$('#pdf'), readPane=$('#read'), divider=$('#divider');
 
-/* ---------- transport ---------- */
-let speed = 1.0;
-window.cmd = async c => render(await (await fetch('/'+c, {method:'POST'})).json());
-window.nudge = v => { speed = Math.max(0.5, Math.min(2, Math.round((speed+v)*10)/10));
-  fetch('/speed?v='+speed, {method:'POST'}); };
-function render(s){
-  speed = s.speed;
-  $('#play').textContent = s.playing ? '⏸' : '▶';
-  $('#now').textContent = s.sentence || '(nothing loaded)';
-  $('#meta').textContent = s.total ? `${s.index+1} / ${s.total} · ${s.voice} · ${s.speed.toFixed(1)}×` : '';
-  if (s.total && s.index !== lastIndex){ lastIndex = s.index; highlight(s.sentence); }
+/* ---------- normalization (shared by highlight + select-to-read) ---------- */
+const PUA={'\uF000':'ff','\uF001':'fi','\uF002':'fl','\uF003':'ffi','\uF004':'ffl'};
+function normStr(s){
+  s=s.replace(/[\uF000-\uF004]/g,m=>PUA[m]).normalize('NFKC').toLowerCase();
+  let o=''; for(const c of s) if(/[a-z0-9]/.test(c)) o+=c; return o;
 }
-let lastIndex = -1;
+
+/* ---------- playing indicator (find the noisy tab) ---------- */
+let favEl=document.querySelector('link[rel=icon]'), favState=null;
+function setPlaying(on){
+  document.title=(on?'▶ ':'')+'Spit It Out';
+  if(favState===on) return; favState=on;
+  const col=on?'#3a6df0':'#8b8b98';
+  const wave=on
+    ? `<path d="M15 8.5a5 5 0 010 7" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`
+    : `<line x1="15" y1="9" x2="21" y2="15" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3z" fill="${col}"/>${wave}</svg>`;
+  favEl.href='data:image/svg+xml,'+encodeURIComponent(svg);
+}
+
+/* ---------- transport + teleprompter ---------- */
+let speed=1.0, lastIndex=-1, sentences=[], pageOf=[];
+window.cmd = async c => render(await (await fetch('/'+c,{method:'POST'})).json());
+window.nudge = v => { speed=Math.max(0.5,Math.min(2,Math.round((speed+v)*10)/10)); fetch('/speed?v='+speed,{method:'POST'}); };
+window.seekTo = i => fetch('/seek_to?index='+i,{method:'POST'}).then(r=>r.json()).then(render);
+function txt(i){ return (i>=0 && i<sentences.length) ? sentences[i] : ''; }
+function render(s){
+  speed=s.speed; setPlaying(s.playing);
+  $('#play').textContent=s.playing?'⏸':'▶';
+  $('#cur').textContent=s.sentence||'(nothing loaded)';
+  $('#prev').textContent=txt(s.index-1);
+  $('#next').textContent=txt(s.index+1);
+  $('#meta').textContent=s.total?`${s.index+1} / ${s.total} · ${s.speed.toFixed(1)}×`:'';
+  const vsel=$('#voice'); if(vsel && s.voice && vsel.value!==s.voice && vsel.options.length) vsel.value=s.voice;
+  $('#prog>div').style.width=s.total?((s.index+1)/s.total*100)+'%':'0';
+  if(s.total && s.index!==lastIndex){ lastIndex=s.index; syncHighlight(s.index, s.sentence); }
+}
+$('#prev').onclick=()=>{ if(lastIndex>0) seekTo(lastIndex-1); };
+$('#next').onclick=()=>{ if(lastIndex<sentences.length-1) seekTo(lastIndex+1); };
+$('#prog').onclick=e=>{ const r=e.currentTarget.getBoundingClientRect();
+  seekTo(Math.min(sentences.length-1, Math.floor((e.clientX-r.left)/r.width*sentences.length))); };
 async function poll(){ try{ render(await (await fetch('/status')).json()); }catch(e){} }
-setInterval(poll, 500);
-document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
-  if (e.key === ' '){ e.preventDefault(); cmd('toggle'); }
-  else if (e.key === 'ArrowRight') cmd('next');
-  else if (e.key === 'ArrowLeft') cmd('prev');
+setInterval(poll,500);
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='SELECT') return;
+  if(e.key===' '){e.preventDefault();cmd('toggle');}
+  else if(e.key==='ArrowRight')cmd('next');
+  else if(e.key==='ArrowLeft')cmd('prev');
+  else if(e.key==='ArrowUp'){e.preventDefault();nudge(0.1);}
+  else if(e.key==='ArrowDown'){e.preventDefault();nudge(-0.1);}
 });
 
-/* ---------- layout (persisted) ---------- */
-const LS = 'pdfreader.layout';
-let layout = Object.assign({orient:'row', split:60, show:'both'}, JSON.parse(localStorage.getItem(LS)||'{}'));
+/* ---------- layout + zoom (persisted) ---------- */
+const LS='pdfreader.layout';
+let layout=Object.assign({orient:'row',split:60,show:'both',readScale:1},JSON.parse(localStorage.getItem(LS)||'{}'));
+function saveLayout(){ localStorage.setItem(LS,JSON.stringify(layout)); }
 function applyLayout(){
-  app.classList.toggle('col', layout.orient === 'col');
-  divider.style.cursor = layout.orient === 'col' ? 'row-resize' : 'col-resize';
-  const showPdf = layout.show !== 'read', showRead = layout.show !== 'pdf';
-  pdfPane.classList.toggle('hidden', !showPdf);
-  readPane.classList.toggle('hidden', !showRead);
-  divider.classList.toggle('hidden', !(showPdf && showRead));
-  $('#t-pdf').classList.toggle('on', showPdf);
-  $('#t-read').classList.toggle('on', showRead);
-  if (showPdf && showRead){
-    const basis = layout.split + '%';
-    pdfPane.style.flex = `0 0 ${basis}`;
-    readPane.style.flex = '1 1 auto';
-  } else { pdfPane.style.flex = readPane.style.flex = '1 1 auto'; }
-  localStorage.setItem(LS, JSON.stringify(layout));
+  app.classList.toggle('col',layout.orient==='col');
+  const showPdf=layout.show!=='read', showRead=layout.show!=='pdf';
+  pdfPane.classList.toggle('hidden',!showPdf);
+  readPane.classList.toggle('hidden',!showRead);
+  divider.classList.toggle('hidden',!(showPdf&&showRead));
+  $('#t-pdf').classList.toggle('on',showPdf);
+  $('#t-read').classList.toggle('on',showRead);
+  pdfPane.style.flex = (showPdf&&showRead) ? `0 0 ${layout.split}%` : '1 1 auto';
+  readPane.style.flex='1 1 auto';
+  readPane.style.setProperty('--read-scale',layout.readScale);
+  saveLayout();
 }
-$('#t-orient').onclick = () => { layout.orient = layout.orient === 'row' ? 'col' : 'row'; applyLayout(); };
-$('#t-pdf').onclick = () => { layout.show = layout.show === 'pdf' ? 'both' : (layout.show === 'read' ? 'both' : 'read'); applyLayout(); };
-$('#t-read').onclick = () => { layout.show = layout.show === 'read' ? 'both' : (layout.show === 'pdf' ? 'both' : 'pdf'); applyLayout(); };
-// drag divider
-divider.addEventListener('pointerdown', e => {
+$('#t-orient').onclick=()=>{layout.orient=layout.orient==='row'?'col':'row';applyLayout();};
+$('#t-pdf').onclick=()=>{layout.show=(layout.show==='read')?'both':'read';applyLayout();};
+$('#t-read').onclick=()=>{layout.show=(layout.show==='pdf')?'both':'pdf';applyLayout();};
+window.zoomText=d=>{ layout.readScale=Math.max(0.7,Math.min(2.4,Math.round((layout.readScale+d*0.1)*10)/10));
+  readPane.style.setProperty('--read-scale',layout.readScale); saveLayout(); };
+divider.addEventListener('pointerdown',e=>{
   divider.setPointerCapture(e.pointerId);
-  const move = ev => {
-    const r = app.getBoundingClientRect();
-    let pct = layout.orient === 'col'
-      ? (ev.clientY - r.top) / r.height * 100
-      : (ev.clientX - r.left) / r.width * 100;
-    layout.split = Math.max(15, Math.min(85, pct));
-    pdfPane.style.flex = `0 0 ${layout.split}%`;
-  };
-  const up = () => { divider.releasePointerCapture(e.pointerId);
-    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
-    localStorage.setItem(LS, JSON.stringify(layout)); };
-  document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+  const move=ev=>{ const r=app.getBoundingClientRect();
+    const pct=layout.orient==='col'?(ev.clientY-r.top)/r.height*100:(ev.clientX-r.left)/r.width*100;
+    layout.split=Math.max(15,Math.min(85,pct)); pdfPane.style.flex=`0 0 ${layout.split}%`; };
+  const up=()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); saveLayout(); };
+  document.addEventListener('pointermove',move); document.addEventListener('pointerup',up);
 });
 applyLayout();
 
-/* ---------- normalization (shared by highlight + select-to-read) ---------- */
-const PUA = {'\uF000':'ff','\uF001':'fi','\uF002':'fl','\uF003':'ffi','\uF004':'ffl'};
-function normChars(s){
-  s = s.replace(/[\uF000-\uF004]/g, m => PUA[m]).normalize('NFKC').toLowerCase();
-  const out = [];
-  for (const ch of s) if (/[a-z0-9]/.test(ch)) out.push(ch);
-  return out;
-}
-function normStr(s){ return normChars(s).join(''); }
-
-/* ---------- render PDF + build match indexes ---------- */
-let spans = [];              // every text-layer span, document order
-let normTL = '', mapTL = []; // normalized doc text -> span index (for highlight)
-let normS = '', mapS = [];   // normalized sentence text -> sentence index (for select-to-read)
-let tlSearchFrom = 0;
-
-(async function initPdf(){
-  // sentence corpus for select-to-read
-  try {
-    const sentences = await (await fetch('/sentences')).json();
-    sentences.forEach((s, si) => { for (const ch of normChars(s)){ normS += ch; mapS.push(si); } });
-  } catch(e){}
-
-  let pdf;
-  try { pdf = await pdfjsLib.getDocument('/pdf').promise; }
-  catch(e){ pdfPane.innerHTML = '<p style="color:#9a9aa8;margin-top:2em">No PDF to display.</p>'; return; }
-
-  const first = await pdf.getPage(1);
-  const base = first.getViewport({scale:1});
-  const fit = Math.max(0.5, Math.min(3, (pdfPane.clientWidth - 32) / base.width));
-  const dpr = window.devicePixelRatio || 1;
-
-  for (let n = 1; n <= pdf.numPages; n++){
-    const page = await pdf.getPage(n);
-    const vp = page.getViewport({scale: fit});
-    const holder = document.createElement('div');
-    holder.className = 'page';
-    holder.style.width = vp.width + 'px';
-    holder.style.height = vp.height + 'px';
-    holder.style.setProperty('--scale-factor', fit);
-    pdfPane.appendChild(holder);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.floor(vp.width * dpr);
-    canvas.height = Math.floor(vp.height * dpr);
-    canvas.style.width = vp.width + 'px';
-    canvas.style.height = vp.height + 'px';
-    holder.appendChild(canvas);
-    page.render({canvasContext: canvas.getContext('2d'),
-      transform: dpr !== 1 ? [dpr,0,0,dpr,0,0] : null, viewport: vp});
-
-    const tlDiv = document.createElement('div');
-    tlDiv.className = 'textLayer';
-    holder.appendChild(tlDiv);
-    await pdfjsLib.renderTextLayer({textContentSource: page.streamTextContent(), container: tlDiv, viewport: vp}).promise;
-    for (const sp of tlDiv.querySelectorAll('span')){
-      if (sp.childElementCount || !sp.textContent) continue;   // skip marked-content wrappers
-      const si = spans.length; spans.push(sp);
-      for (const ch of normChars(sp.textContent)){ normTL += ch; mapTL.push(si); }
-    }
+/* ---------- PDF: lazy render, precise sync-highlight, select-to-read ---------- */
+let recs=[], baseFit=1, fit=1, pdfZoom=1, baseVp=null, normS='', mapS=[], pdfDoc=null;
+const clampFit=x=>Math.max(0.5,Math.min(3,x));
+// Deterministic geometry-based visibility (IntersectionObserver mis-reports
+// bulk-appended nodes as all-visible at init). Render pages within ~1000px of
+// the viewport, free the rest, so a big PDF stays light.
+function updateVisible(){
+  const lo=pdfPane.scrollTop-1000, hi=pdfPane.scrollTop+pdfPane.clientHeight+1000;
+  for(const rec of recs){
+    const y=rec.holder.offsetTop, y2=y+rec.holder.offsetHeight;
+    if(y2>lo && y<hi) renderPage(rec); else freePage(rec);
   }
-})();
+}
+let visTick=false;
+function scheduleVisible(){ if(visTick) return; visTick=true;
+  requestAnimationFrame(()=>{ visTick=false; updateVisible(); }); }
+pdfPane.addEventListener('scroll',scheduleVisible);
+window.addEventListener('resize',scheduleVisible);
 
-function clearHl(){ for (const sp of spans) sp.classList.remove('hl'); }
-function highlight(sentence){
-  if (!normTL || !sentence) return;
-  const q = normStr(sentence).slice(0, 60);
-  if (q.length < 4) return;
-  let at = normTL.indexOf(q, tlSearchFrom);
-  if (at < 0) at = normTL.indexOf(q);          // wrap (seek backwards / repeat)
-  if (at < 0){ tlSearchFrom = 0; return; }
-  tlSearchFrom = at + q.length;
-  clearHl();
-  const a = mapTL[at], b = mapTL[Math.min(mapTL.length-1, at + normStr(sentence).length - 1)];
-  for (let i = a; i <= b; i++) spans[i] && spans[i].classList.add('hl');
-  spans[a] && spans[a].scrollIntoView({block:'center', behavior:'smooth'});
+function renderPage(rec){
+  if(rec.p) return rec.p;
+  const token={}; rec.token=token;               // cancel guard against free-during-render
+  rec.p=(async()=>{
+    if(!rec.page) rec.page=await pdfDoc.getPage(rec.n);
+    if(rec.token!==token) return;
+    const vp=rec.page.getViewport({scale:fit});
+    rec.holder.style.width=vp.width+'px'; rec.holder.style.height=vp.height+'px';
+    rec.holder.style.setProperty('--scale-factor',fit);
+    const dpr=window.devicePixelRatio||1;
+    const cv=rec.holder.querySelector('canvas');
+    cv.width=Math.floor(vp.width*dpr); cv.height=Math.floor(vp.height*dpr);
+    cv.style.width=vp.width+'px'; cv.style.height=vp.height+'px';
+    rec.task=rec.page.render({canvasContext:cv.getContext('2d'),
+      transform:dpr!==1?[dpr,0,0,dpr,0,0]:null, viewport:vp});
+    try{ await rec.task.promise; }catch(e){ return; }   // cancelled while scrolling past
+    if(rec.token!==token) return;
+    const tl=rec.holder.querySelector('.textLayer'); tl.replaceChildren();
+    await pdfjsLib.renderTextLayer({textContentSource:rec.page.streamTextContent(),container:tl,viewport:vp}).promise;
+    if(rec.token!==token) return;
+    // map each normalized char to its exact DOM position (node + offset) so the
+    // highlight paints a sub-line Range, not whole spans.
+    rec.norm=''; rec.pos=[];
+    for(const sp of tl.querySelectorAll('span')){
+      if(sp.childElementCount||!sp.firstChild) continue;
+      const node=sp.firstChild, raw=sp.textContent; let ri=0;
+      for(const ch of raw){ for(const nc of normStr(ch)){ rec.norm+=nc; rec.pos.push({node,off:ri}); } ri+=ch.length; }
+    }
+    rec.ready=true;
+  })();
+  return rec.p;
+}
+function freePage(rec){
+  if(!rec.p) return;
+  rec.token=null;                                // stop any in-flight render from redrawing
+  if(rec.task){ try{ rec.task.cancel(); }catch(e){} rec.task=null; }
+  rec.p=null; rec.ready=false;
+  const cv=rec.holder.querySelector('canvas'); cv.width=0; cv.height=0;
+  rec.holder.querySelector('.textLayer').replaceChildren();
+  rec.norm=''; rec.pos=[];
+}
+async function syncHighlight(index, sentence){
+  const pg=pageOf[index]; const rec=pg&&recs[pg-1]; if(!rec) return;
+  await renderPage(rec);
+  const q=normStr(sentence); if(q.length<4||!rec.norm) return;   // no match -> don't yank the view
+  const head=q.slice(0,28), tail=q.slice(-28);
+  const s=rec.norm.indexOf(head); if(s<0) return;
+  const ep=rec.norm.indexOf(tail, s);
+  const e=ep>=0 ? Math.min(rec.norm.length-1, ep+tail.length-1) : Math.min(rec.norm.length-1, s+q.length-1);
+  const p0=rec.pos[s], p1=rec.pos[e];
+  try{
+    const range=document.createRange();
+    range.setStart(p0.node,p0.off); range.setEnd(p1.node,p1.off+1);
+    if(window.CSS && CSS.highlights) CSS.highlights.set('sentence', new Highlight(range));
+    // follow the read gently: scroll only when the sentence is actually off-screen
+    const span=p0.node.parentElement;
+    if(span){ const sr=span.getBoundingClientRect(), pr=pdfPane.getBoundingClientRect();
+      if(sr.top<pr.top+16 || sr.bottom>pr.bottom-16) span.scrollIntoView({block:'center',behavior:'smooth'}); }
+  }catch(err){}
 }
 
-/* ---------- select on the PDF -> read from there ---------- */
-pdfPane.addEventListener('mouseup', () => {
-  const sel = (window.getSelection().toString() || '').trim();
-  if (sel.length < 3 || !normS) return;
-  const q = normStr(sel).slice(0, 60);
-  if (q.length < 3) return;
-  const at = normS.indexOf(q);
-  if (at < 0) return;
-  const idx = mapS[at];
-  tlSearchFrom = 0;
-  fetch('/seek_to?index=' + idx, {method:'POST'}).then(r => r.json()).then(render);
-  window.getSelection().removeAllRanges();
+pdfPane.addEventListener('mouseup',()=>{
+  const sel=(window.getSelection().toString()||'').trim();
+  if(sel.length<3||!normS) return;
+  const q=normStr(sel).slice(0,60); if(q.length<3) return;
+  const at=normS.indexOf(q); if(at<0) return;
+  seekTo(mapS[at]); window.getSelection().removeAllRanges();
 });
 
-poll();
+/* ---------- zoom the PDF (buttons + ⌘/ctrl-scroll) ---------- */
+function applyScale(){ fit=baseFit*pdfZoom;
+  for(const rec of recs){                       // resize placeholders; re-render live ones
+    rec.holder.style.width=(baseVp.width*fit)+'px'; rec.holder.style.height=(baseVp.height*fit)+'px';
+    rec.holder.style.setProperty('--scale-factor',fit);
+    if(rec.p){ freePage(rec); renderPage(rec); } }
+  scheduleVisible(); }
+window.zoomPdf=f=>{ pdfZoom=Math.max(0.4,Math.min(4,pdfZoom*f)); applyScale(); };
+function refit(){ if(!pdfDoc) return;
+  baseFit=clampFit((pdfPane.clientWidth-40)/baseVp.width); pdfZoom=1; applyScale(); }
+$('#t-fit').onclick=refit;
+pdfPane.addEventListener('wheel',e=>{ if(e.ctrlKey||e.metaKey){ e.preventDefault(); zoomPdf(e.deltaY<0?1.1:1/1.1); }},{passive:false});
+
+/* ---------- voice picker (grouped by accent + gender) ---------- */
+const LANG={a:'American',b:'British',e:'Spanish',f:'French',h:'Hindi',i:'Italian',j:'Japanese',p:'Portuguese',z:'Chinese'};
+const FLAG={a:'\u{1F1FA}\u{1F1F8}',b:'\u{1F1EC}\u{1F1E7}',e:'\u{1F1EA}\u{1F1F8}',f:'\u{1F1EB}\u{1F1F7}',h:'\u{1F1EE}\u{1F1F3}',i:'\u{1F1EE}\u{1F1F9}',j:'\u{1F1EF}\u{1F1F5}',p:'\u{1F1E7}\u{1F1F7}',z:'\u{1F1E8}\u{1F1F3}'};
+const GENDER={f:'Female',m:'Male'};
+const GROUP_ORDER=['af','am','bf','bm','ef','em','ff','hf','hm','if','im','jf','jm','pf','pm','zf','zm'];
+const friendly=v=>v.slice(3).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+(async function initVoices(){
+  try{
+    const vs=await (await fetch('/voices')).json();
+    const g={}; for(const v of vs){ (g[v.slice(0,2)]||(g[v.slice(0,2)]=[])).push(v); }
+    let html='';
+    for(const k of GROUP_ORDER){ if(!g[k]) continue;
+      html+=`<optgroup label="${FLAG[k[0]]||''} ${LANG[k[0]]||k[0]} · ${GENDER[k[1]]||''}">`
+          + g[k].sort().map(v=>`<option value="${v}">${friendly(v)}</option>`).join('')
+          + `</optgroup>`;
+    }
+    const sel=$('#voice'); sel.innerHTML=html;
+    sel.onchange=()=>fetch('/voice?v='+encodeURIComponent(sel.value),{method:'POST'}).then(r=>r.json()).then(render);
+  }catch(e){}
+})();
+
+(async function init(){
+  try{
+    const items=await (await fetch('/sentences')).json();
+    pageOf=items.map(x=>x.p); sentences=items.map(x=>x.t);
+    sentences.forEach((s,si)=>{ for(const ch of normStr(s)){ normS+=ch; mapS.push(si); } });
+  }catch(e){}
+  try{ pdfDoc=await pdfjsLib.getDocument('/pdf').promise; }
+  catch(e){ pdfPane.innerHTML='<p style="color:var(--dim);margin-top:2em">No PDF to display.</p>'; poll(); return; }
+  const first=await pdfDoc.getPage(1);
+  baseVp=first.getViewport({scale:1});
+  baseFit=clampFit((pdfPane.clientWidth-40)/baseVp.width); fit=baseFit;
+  for(let n=1;n<=pdfDoc.numPages;n++){
+    const holder=document.createElement('div');
+    holder.className='page'; holder.dataset.i=recs.length;
+    holder.style.width=(baseVp.width*fit)+'px'; holder.style.height=(baseVp.height*fit)+'px';
+    holder.style.setProperty('--scale-factor',fit);
+    holder.innerHTML='<canvas width="0" height="0"></canvas><div class="textLayer"></div>';
+    pdfPane.appendChild(holder);
+    recs.push({n, page:(n===1?first:null), holder, p:null, ready:false, norm:'', pos:[]});
+  }
+  requestAnimationFrame(updateVisible);   // render only the on-screen pages once laid out
+  poll();
+})();
 </script>
 </body></html>

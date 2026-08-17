@@ -14,10 +14,6 @@ PORT="${VOICE_READER_PORT:-8477}"; base="http://127.0.0.1:$PORT"
 cfg="$HOME/.claude/voice/config.sh"; [ -f "$cfg" ] && source "$cfg"
 voice="${VOICE_KOKORO_VOICE:-af_heart}"; speed="${VOICE_KOKORO_SPEED:-1.0}"
 
-# Extract clean sentences (one per line). Non-zero = unreadable/scanned; message
-# already went to stderr, so just pass the code up.
-sents="$("$py" "$K/pdf_extract.py" "$pdf" "$pages")"
-
 # Start the reader daemon if it isn't answering. First-ever model load on CPU can
 # take a while; the wait is tunable. A mkdir lock keeps two concurrent pdf-read
 # calls from each spawning a daemon on the same port (the loser would EADDRINUSE
@@ -34,12 +30,20 @@ if ! curl -sf "$base/status" >/dev/null 2>&1; then
   curl -sf "$base/status" >/dev/null 2>&1 || { echo "reader failed to start:" >&2; tail -3 "$K/reader.log" >&2; exit 1; }
 fi
 
-# Load = voice \t speed \t abs-path \t sentences joined by 0x1f (US). The daemon
-# serves the file at /pdf for the split-view render; sentences hold no newlines
-# or US bytes, so this framing is unambiguous.
+# The daemon extracts the file itself (voice \t speed \t pages \t abs-path) and
+# serves it at /pdf for the split view. It replies with {ok,total} or {ok:false,error}.
 abs="$(cd "$(dirname "$pdf")" && pwd)/$(basename "$pdf")"
-{ printf '%s\t%s\t%s\t' "$voice" "$speed" "$abs"; printf '%s' "$sents" | tr '\n' '\037'; } \
-  | curl -sf --data-binary @- "$base/load" >/dev/null
+resp="$(printf '%s\t%s\t%s\t%s' "$voice" "$speed" "$pages" "$abs" | curl -sf --data-binary @- "$base/load")"
+"$py" - "$resp" <<'PY' || exit $?
+import json, sys
+try:
+    d = json.loads(sys.argv[1])
+except Exception:
+    sys.exit("reader did not respond")
+if not d.get("ok"):
+    sys.exit(d.get("error", "load failed"))
+sys.stderr.write(f"reading {d['total']} sentences (pages {d['lo']+1}-{d['hi']} of {d['pages']})\n")
+PY
 
 command -v open >/dev/null && open "$base/" >/dev/null 2>&1 || true
-echo "reading — control bar at $base/  (or: pdf-ctl play|pause|next|prev|stop)"
+echo "control bar at $base/  (or: pdf-ctl play|pause|next|prev|stop)"

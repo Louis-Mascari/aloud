@@ -40,6 +40,24 @@ def _norm(line):
     return re.sub(r"\s+", " ", line).strip()
 
 
+# Subset fonts often encode ligatures in the Private Use Area (Adobe convention),
+# which NFKC can't expand. Map the common ones, then any leftover PUA/control
+# glyph is replaced with a space so no unreadable "tofu" reaches the voice.
+_PUA_LIGATURES = {
+    "": "ff", "": "fi", "": "fl", "": "ffi", "": "ffl",
+}
+
+
+def _clean_glyphs(text):
+    import unicodedata
+    text = text.translate(str.maketrans(_PUA_LIGATURES))
+    text = unicodedata.normalize("NFKC", text)   # standard ﬁ/ﬂ ligatures, etc.
+    return "".join(
+        c if c == "\n" or unicodedata.category(c) not in ("Co", "Cc", "Cf") else " "
+        for c in text
+    )
+
+
 def _page_range(pages, n):
     """1-based inclusive "N", "N-M", or "N-" (to end) -> 0-based [lo, hi)."""
     if not pages:
@@ -104,7 +122,6 @@ def _cap(sentences):
 
 
 def extract_sentences(path, pages=None):
-    import unicodedata
     from pypdf import PdfReader
 
     reader = PdfReader(path)
@@ -127,7 +144,7 @@ def extract_sentences(path, pages=None):
                 continue   # furniture, dropped only in the header/footer zone
             kept.append(ln)
 
-    text = unicodedata.normalize("NFKC", "\n".join(kept))   # expand ﬁ/ﬂ ligatures
+    text = _clean_glyphs("\n".join(kept))       # PUA ligatures, NFKC, drop tofu glyphs
     text = re.sub(r"-\n(\w)", r"\1", text)      # join hyphenated line breaks (also fuses 2019-\n2020)
     text = re.sub(r"\s*\n\s*", " ", text)       # unwrap hard line breaks
     text = re.sub(r"\s+", " ", text).strip()
@@ -177,6 +194,10 @@ def _selftest():
         assert must in body, f"data loss: {must!r} dropped\n{body}"
     assert "ACME REPORT" not in body, "header not stripped"
     assert "1" not in [k for k in kept], "page number not stripped"
+
+    # PUA ligatures expand; stray private-use/control glyphs become spaces
+    assert _clean_glyphs("The rst ow") == "The first flow", _clean_glyphs("The rst ow")
+    assert _clean_glyphs("ab") == "a b"
 
     # sentence split: protect e.g. / decimals, break real boundaries
     parts = re.split(r"(?<=[.!?])\s+(?=[\"'(\[A-Z0-9])",

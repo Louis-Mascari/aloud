@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# pdf-read FILE [PAGES] — read a PDF aloud in your local Kokoro voice with a
+# control bar (play/pause/skip). 100% offline, so work/NDA PDFs never leave the
+# machine. PAGES like "3-10" or "5" (1-based, inclusive) skips front/back matter.
+# Transport also via `pdf-ctl` or the control bar's Space / ← / → keys.
+set -euo pipefail
+pdf="${1:?usage: pdf-read FILE [pages e.g. 3-10]}"; pages="${2:-}"
+[ -f "$pdf" ] || { echo "no such file: $pdf" >&2; exit 1; }
+
+K="${KOKORO_DIR:-$HOME/.claude/voice/kokoro}"; py="$K/.venv/bin/python"
+[ -x "$py" ] && [ -f "$K/reader.py" ] || { echo "run setup-kokoro.sh first" >&2; exit 1; }
+PORT="${VOICE_READER_PORT:-8477}"; base="http://127.0.0.1:$PORT"
+
+cfg="$HOME/.claude/voice/config.sh"; [ -f "$cfg" ] && source "$cfg"
+voice="${VOICE_KOKORO_VOICE:-af_heart}"; speed="${VOICE_KOKORO_SPEED:-1.0}"
+
+# Extract clean sentences (one per line). Non-zero = unreadable/scanned; message
+# already went to stderr, so just pass the code up.
+sents="$("$py" "$K/pdf_extract.py" "$pdf" "$pages")"
+
+# Start the reader daemon if it isn't answering. First-ever model load on CPU can
+# take a while; the wait is tunable. A mkdir lock keeps two concurrent pdf-read
+# calls from each spawning a daemon on the same port (the loser would EADDRINUSE
+# and clobber the log). VOICE_READER_START_TIMEOUT is in half-second ticks.
+tries="${VOICE_READER_START_TIMEOUT:-160}"   # 160 * 0.5s = 80s cold-start budget
+if ! curl -sf "$base/status" >/dev/null 2>&1; then
+  lock="$K/.reader.starting"
+  if mkdir "$lock" 2>/dev/null; then
+    trap 'rmdir "$lock" 2>/dev/null || true' EXIT
+    VOICE_READER_PORT="$PORT" VOICE_KOKORO_VOICE="$voice" VOICE_KOKORO_SPEED="$speed" \
+      nohup "$py" "$K/reader.py" >"$K/reader.log" 2>&1 &
+  fi
+  for _ in $(seq 1 "$tries"); do curl -sf "$base/status" >/dev/null 2>&1 && break; sleep 0.5; done
+  curl -sf "$base/status" >/dev/null 2>&1 || { echo "reader failed to start:" >&2; tail -3 "$K/reader.log" >&2; exit 1; }
+fi
+
+# Load = voice \t speed \t sentences joined by 0x1f (US). Sentences hold no
+# newlines or US bytes, so this framing is unambiguous.
+{ printf '%s\t%s\t' "$voice" "$speed"; printf '%s' "$sents" | tr '\n' '\037'; } \
+  | curl -sf --data-binary @- "$base/load" >/dev/null
+
+command -v open >/dev/null && open "$base/" >/dev/null 2>&1 || true
+echo "reading — control bar at $base/  (or: pdf-ctl play|pause|next|prev|stop)"

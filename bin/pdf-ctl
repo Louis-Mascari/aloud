@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# pdf-ctl CMD — control the running PDF reader (see `pdf-read`).
+#   play | pause | toggle | next | prev | stop | speed <0.5-2.0> | status
+# Bind these to global macOS Shortcuts to control reading while Chrome is focused.
+set -euo pipefail
+PORT="${VOICE_READER_PORT:-8477}"; base="http://127.0.0.1:$PORT"
+cmd="${1:-toggle}"
+case "$cmd" in
+  status) curl -sf "$base/status" && echo ;;
+  speed)  curl -sf -X POST "$base/speed?v=${2:?usage: pdf-ctl speed 1.2}" >/dev/null ;;
+  play|pause|toggle|next|prev|stop) curl -sf -X POST "$base/$cmd" >/dev/null ;;
+  *) echo "usage: pdf-ctl {play|pause|toggle|next|prev|stop|speed <x>|status}" >&2; exit 2 ;;
+esac

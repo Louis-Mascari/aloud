@@ -149,6 +149,25 @@ Audition every Kokoro voice with **`voice voices`** — **space** next, **p** ba
 quit — or narrow to a group (`voice voices af` / `am` / `bf` / `bm`). Lock one in
 with **`voice use bf_emma`**. If Kokoro isn't set up, it falls back to `say`.
 
+## Read a PDF aloud
+
+Point the same Kokoro voice at a PDF and read along, 100% offline (nothing leaves
+the machine, so work/NDA documents are fine):
+
+```bash
+pdf-read ~/Downloads/paper.pdf          # whole document
+pdf-read ~/Downloads/paper.pdf 3-40     # pages 3–40 (skip cover, TOC, references)
+```
+
+A small **control bar** opens in your browser: play/pause, skip back/forward, stop,
+and slower/faster — plus **Space**, **←**, **→** as keys. Skip-forward is how you
+blow past junk without waiting for it. Extraction drops page numbers and repeated
+headers/footers so they aren't read; a page range skips whole sections. Control it
+from anywhere with **`pdf-ctl play|pause|next|prev|stop|speed 1.2`** (bind those to
+global hotkeys via [RECIPES.md](RECIPES.md) to drive it while your PDF viewer is
+focused). Needs `./setup-kokoro.sh`. Scanned image PDFs have no text to extract and
+aren't supported (no OCR).
+
 ## Barge-in
 
 Speech stops automatically when you **send a prompt** or **switch to another pane**
@@ -213,6 +232,8 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `lib/voice-lib.sh` | state files, focus logic, the `voice` helpers |
 | `kokoro/` | the neural-voice daemon and voice auditioner |
 | `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice (warm daemon) |
+| `bin/pdf-read` + `bin/pdf-ctl` | read a PDF aloud with a play/pause/skip control bar |
+| `kokoro/reader.py` + `kokoro/pdf_extract.py` | the reader daemon and PDF text cleaner |
 | `lib/voice-audio.sh` | portable speak/play/stop, detected + overridable |
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |
 | `RECIPES.md` | bind `voice stop` per-terminal or as an OS-global hotkey |

@@ -13,7 +13,7 @@ mkdir -p "$K"; cd "$K"
 
 echo "==> venv + deps"
 uv venv --python 3.12
-uv pip install --python "$K/.venv/bin/python" -q kokoro-onnx soundfile sounddevice
+uv pip install --python "$K/.venv/bin/python" -q kokoro-onnx soundfile sounddevice pypdf
 # sounddevice bundles PortAudio on macOS/Windows; on Linux it needs the system lib:
 #   Debian/Ubuntu: sudo apt install libportaudio2
 [ "$(uname -s)" = Linux ] && ldconfig -p 2>/dev/null | grep -q portaudio \
@@ -26,6 +26,8 @@ base="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-
 
 cp "$REPO/kokoro/daemon.py" "$K/daemon.py"
 cp "$REPO/kokoro/demo-voices.py" "$K/demo-voices.py"
+cp "$REPO/kokoro/reader.py" "$K/reader.py"
+cp "$REPO/kokoro/pdf_extract.py" "$K/pdf_extract.py"
 
 echo
 echo "Kokoro ready. Enable it in ~/.claude/voice/config.sh:"

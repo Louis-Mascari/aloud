@@ -47,6 +47,20 @@ bindings = [ { key = "F13", command = { program = "sh", args = ["-c", "~/…/bin
 ```
 **iTerm2** — Settings → Keys → `+` → action "Run Coprocess" → `~/…/bin/voice stop`.
 
+# Global keys for the PDF reader (`pdf-ctl`)
+
+`pdf-read` opens a clickable control bar, but to drive playback while your PDF
+viewer (or any app) is focused, bind `pdf-ctl` to OS-global hotkeys. Same tools as
+above. macOS **skhd** (`~/.config/skhd/skhdrc`):
+```
+cmd + alt - space  : ~/claude-voice/bin/pdf-ctl toggle   # play/pause
+cmd + alt - right  : ~/claude-voice/bin/pdf-ctl next     # skip junk forward
+cmd + alt - left   : ~/claude-voice/bin/pdf-ctl prev
+cmd + alt - 0      : ~/claude-voice/bin/pdf-ctl stop
+```
+One stop for everything (summaries + reader): point your global stop key at a line
+that runs both `voice stop` and `pdf-ctl stop`.
+
 ## Why not auto-stop the instant dictation starts
 
 No terminal or Claude Code emits a portable "recording started" event, so there's

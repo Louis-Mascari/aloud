@@ -70,6 +70,7 @@ select#voice{font-size:13px;background:#26262e;color:var(--fg);border:0;border-r
  <button class="tbtn" id="t-orient" title="side-by-side / stacked">◧ Layout</button>
  <button class="tbtn" id="t-pdf" title="show / hide PDF">PDF</button>
  <button class="tbtn" id="t-read" title="show / hide reader">Reader</button>
+ <button class="tbtn" id="t-pip" title="pop out floating controls (stay on top while you read)">⧉ Float</button>
  <span class="grow"></span>
  <span id="hint">select text on the PDF to read from there</span>
 </div>
@@ -137,6 +138,34 @@ function setPlaying(on){
   favEl.href='data:image/svg+xml,'+encodeURIComponent(svg);
 }
 
+/* ---------- floating controls (Document Picture-in-Picture) ---------- */
+let pipWin=null, pipEls=null;
+async function popOut(){
+  if(pipWin){ pipWin.close(); return; }
+  if(!window.documentPictureInPicture){ alert('Floating controls need Chrome 116+ (Document Picture-in-Picture).'); return; }
+  pipWin=await documentPictureInPicture.requestWindow({width:380,height:170});
+  const d=pipWin.document;
+  const st=d.createElement('style');
+  st.textContent=`body{margin:0;font:14px/1.4 -apple-system,system-ui,sans-serif;background:#15151a;color:#eaeaf0;
+    display:flex;flex-direction:column;gap:10px;padding:14px;height:100vh;box-sizing:border-box}
+    #pcur{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;text-align:center;font-size:15px}
+    #pmeta{text-align:center;font-size:12px;color:#8b8b98}
+    #prow{display:flex;gap:8px;justify-content:center}
+    button{font-size:18px;background:#26262e;color:#eaeaf0;border:0;border-radius:9px;padding:9px 13px;cursor:pointer;line-height:1}
+    button:hover{background:#33333d}#pplay{background:#3a6df0}`;
+  d.head.appendChild(st);
+  d.body.innerHTML=`<div id="pcur">…</div><div id="pmeta"></div>
+    <div id="prow"><button id="pprev" title="back">⏮</button><button id="pplay" title="play/pause">▶</button>
+    <button id="pnext" title="skip forward">⏭</button><button id="pstop" title="stop">■</button></div>`;
+  const g=id=>d.getElementById(id);
+  g('pprev').onclick=()=>cmd('prev'); g('pplay').onclick=()=>cmd('toggle');
+  g('pnext').onclick=()=>cmd('next'); g('pstop').onclick=()=>cmd('stop');
+  pipEls={cur:g('pcur'), play:g('pplay'), meta:g('pmeta')};
+  $('#t-pip').classList.add('on');
+  pipWin.addEventListener('pagehide',()=>{ pipWin=null; pipEls=null; $('#t-pip').classList.remove('on'); });
+  poll();
+}
+
 /* ---------- transport + teleprompter ---------- */
 let speed=1.0, lastIndex=-1, sentences=[], pageOf=[];
 window.cmd = async c => render(await (await fetch('/'+c,{method:'POST'})).json());
@@ -145,6 +174,8 @@ window.seekTo = i => fetch('/seek_to?index='+i,{method:'POST'}).then(r=>r.json()
 function txt(i){ return (i>=0 && i<sentences.length) ? sentences[i] : ''; }
 function render(s){
   speed=s.speed; setPlaying(s.playing);
+  if(pipEls){ pipEls.cur.textContent=s.sentence||'…'; pipEls.play.textContent=s.playing?'⏸':'▶';
+    pipEls.meta.textContent=s.total?`${s.index+1} / ${s.total}`:''; }
   $('#play').textContent=s.playing?'⏸':'▶';
   $('#cur').textContent=s.sentence||'(nothing loaded)';
   $('#prev').textContent=txt(s.index-1);
@@ -190,6 +221,7 @@ function applyLayout(){
 $('#t-orient').onclick=()=>{layout.orient=layout.orient==='row'?'col':'row';applyLayout();};
 $('#t-pdf').onclick=()=>{layout.show=(layout.show==='read')?'both':'read';applyLayout();};
 $('#t-read').onclick=()=>{layout.show=(layout.show==='pdf')?'both':'pdf';applyLayout();};
+$('#t-pip').onclick=popOut;
 window.zoomText=d=>{ layout.readScale=Math.max(0.7,Math.min(2.4,Math.round((layout.readScale+d*0.1)*10)/10));
   readPane.style.setProperty('--read-scale',layout.readScale); saveLayout(); };
 divider.addEventListener('pointerdown',e=>{

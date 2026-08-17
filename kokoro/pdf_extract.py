@@ -140,16 +140,21 @@ def _cap(s):
     return out
 
 
-def _page_body_text(page):
-    """Reconstruct body lines from positioned glyph fragments, header/footer dropped.
+# Drop the header/footer band by device y (fraction of page height). Asymmetric
+# because footers/page-numbers sit very low (~3%) while body can start high
+# (~95%): a wide top band eats real first lines. Measured so footers and a
+# top-edge "Page" label are removed but body survives.
+_BAND_LO, _BAND_HI = 0.05, 0.97
 
-    Rather than trust pypdf's line assembly (which glues a footer label onto body
-    text), collect each text fragment's device position, drop the top/bottom 8%
-    band, then group the survivors into lines by y and order them top-to-bottom,
-    left-to-right. This keeps a footer label that sits in the body band on its own
-    line instead of fused to prose, so the repeated-line detector can catch it —
-    no per-document rule. Single-column reading order; multi-column interleaves
-    (ponytail: column detection if a two-column doc shows up).
+
+def _page_body_text(page):
+    """Text with the header/footer band dropped, in pypdf's reading order.
+
+    Keep pypdf's own text ordering (it handles multi-column layouts far better
+    than a naive y-sort, which interleaves columns) and use the visitor only to
+    drop glyphs whose true device y is in the header/footer band. Composing the
+    text matrix with the CTM gives the real y even when the page positions content
+    through a cm/XObject transform; tm[5]==0 stays pypdf's newline sentinel.
     """
     try:
         rot = int(getattr(page, "rotation", 0) or 0) % 360
@@ -161,38 +166,34 @@ def _page_body_text(page):
         h = float(page.mediabox.height)
     except Exception:
         h = 792.0
-    lo, hi = h * 0.08, h * 0.92
-    frags = []
+    lo, hi = h * _BAND_LO, h * _BAND_HI
+    parts = []
+    prev_y = [None]
 
     def visit(text, cm, tm, font, size):
-        if not text.strip():
+        if "\n" in text:                     # a real line break emitted by pypdf
+            parts.append(text)
+            prev_y[0] = None
             return
-        # compose the text matrix with the CTM for true device x/y (tm alone is
-        # wrong when the page positions content through a cm/XObject transform).
+        if tm[5] == 0:                        # positioning marker, no glyphs — ignore
+            return
         y = tm[4] * cm[1] + tm[5] * cm[3] + cm[5]
-        x = tm[4] * cm[0] + tm[5] * cm[2] + cm[4]
-        if lo < y < hi:
-            frags.append((y, x, size or 10.0, text))
+        if not (lo < y < hi):
+            return                           # header/footer band
+        # Insert a break when the baseline jumps more than a line: pypdf sometimes
+        # keeps a footer/header label on the same output line as body ("Page" glued
+        # to prose). Splitting on the y-jump de-glues it into its own line (which
+        # the repeated-line/label filters then remove) without reordering columns.
+        if prev_y[0] is not None and abs(prev_y[0] - y) > 8:
+            parts.append("\n")
+        parts.append(text)
+        prev_y[0] = y
 
     try:
         page.extract_text(visitor_text=visit)
     except Exception:
         return page.extract_text() or ""     # visitor unsupported: fall back to plain
-    if not frags:
-        return ""
-
-    frags.sort(key=lambda f: (-f[0], f[1]))   # top-to-bottom, then left-to-right
-    lines, cur, cy, csz = [], [], None, 10.0
-    for y, x, sz, t in frags:
-        if cy is not None and abs(y - cy) <= 0.6 * max(csz, sz):   # same line (super/subscripts join)
-            cur.append((x, t))
-        else:
-            if cur:
-                lines.append(cur)
-            cur, cy, csz = [(x, t)], y, sz
-    if cur:
-        lines.append(cur)
-    return "\n".join("".join(t for _, t in sorted(ln)) for ln in lines)
+    return "".join(parts)
 
 
 def extract_sentences(path, pages=None):

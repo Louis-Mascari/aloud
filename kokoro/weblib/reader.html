@@ -167,7 +167,7 @@ async function popOut(){
 }
 
 /* ---------- transport + teleprompter ---------- */
-let speed=1.0, lastIndex=-1, sentences=[], pageOf=[], pageOffset=[];
+let speed=1.0, lastIndex=-1, hlIndex=-1, sentences=[], pageOf=[], pageOffset=[];
 window.cmd = async c => { try{ render(await (await fetch('/'+c,{method:'POST'})).json()); }catch(e){} };
 window.nudge = v => { speed=Math.max(0.5,Math.min(2,Math.round((speed+v)*10)/10)); fetch('/speed?v='+speed,{method:'POST'}).catch(()=>{}); };
 window.seekTo = i => fetch('/seek_to?index='+i,{method:'POST'}).then(r=>r.json()).then(render).catch(()=>{});
@@ -183,7 +183,9 @@ function render(s){
   $('#meta').textContent=s.total?`${s.index+1} / ${s.total} · ${s.speed.toFixed(1)}×`:'';
   const vsel=$('#voice'); if(vsel && s.voice && vsel.value!==s.voice && vsel.options.length) vsel.value=s.voice;
   $('#prog>div').style.width=s.total?((s.index+1)/s.total*100)+'%':'0';
-  if(s.total && s.index!==lastIndex){ lastIndex=s.index; syncHighlight(s.index, s.sentence); }
+  // retry the highlight until it actually paints: the page may still be rendering
+  // (or was freed mid-scroll) the first time, so committing on index alone loses it.
+  if(s.total && (s.index!==lastIndex || hlIndex!==s.index)){ lastIndex=s.index; syncHighlight(s.index, s.sentence); }
 }
 $('#prev').onclick=()=>{ if(lastIndex>0) seekTo(lastIndex-1); };
 $('#next').onclick=()=>{ if(lastIndex<sentences.length-1) seekTo(lastIndex+1); };
@@ -282,11 +284,13 @@ function renderPage(rec){
       for(const ch of raw){ for(const nc of normStr(ch)){ rec.norm+=nc; rec.pos.push({node,off:ri}); } ri+=ch.length; }
     }
     rec.ready=true;
+    if(rec.n===pageOf[lastIndex]) hlIndex=-1;   // this page (re)rendered with fresh nodes: repaint the highlight
   })();
   return rec.p;
 }
 function freePage(rec){
   if(!rec.p) return;
+  if(rec.n===pageOf[lastIndex]) return;   // keep the page the current sentence is highlighted on
   rec.token=null;                                // stop any in-flight render from redrawing
   if(rec.task){ try{ rec.task.cancel(); }catch(e){} rec.task=null; }
   rec.p=null; rec.ready=false;
@@ -313,6 +317,7 @@ async function syncHighlight(index, sentence){
     const range=document.createRange();
     range.setStart(p0.node,p0.off); range.setEnd(p1.node,p1.off+1);
     if(window.CSS && CSS.highlights) CSS.highlights.set('sentence', new Highlight(range));
+    hlIndex=index;   // painted — stop retrying this sentence
     // follow the read gently: scroll only when the sentence is actually off-screen
     const span=p0.node.parentElement;
     if(span){ const sr=span.getBoundingClientRect(), pr=pdfPane.getBoundingClientRect();

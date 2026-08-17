@@ -1,4 +1,4 @@
-# Spit It Out
+# aloud
 
 A small collection of local, work-safe tools for people who'd rather **listen
 than read** — less eye strain, fewer walls of text to get through in a day.

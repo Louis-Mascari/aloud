@@ -1,9 +1,8 @@
 # Working in this repo (for coding agents)
 
-**Spit It Out** is a collection of local "listen instead of read" tools sharing
-one Kokoro TTS engine. Tools are separate top-level dirs; `kokoro/` is the shared
-engine. (Repo is still named `claude-voice` on GitHub — rename is a separate,
-optional step.)
+**aloud** is a collection of local "listen instead of read" tools sharing one
+Kokoro TTS engine. Tools are separate top-level dirs; `kokoro/` is the shared
+engine. ("Spit It Out" is the PDF-reader app's name, not the collection's.)
 
 - **claude-voice** (`hooks/`, `lib/`, `bin/voice`, `wezterm/`) — async spoken
   summaries + tab state for Claude Code in WezTerm. Hooks write state files;

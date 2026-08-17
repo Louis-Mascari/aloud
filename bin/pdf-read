@@ -34,9 +34,11 @@ if ! curl -sf "$base/status" >/dev/null 2>&1; then
   curl -sf "$base/status" >/dev/null 2>&1 || { echo "reader failed to start:" >&2; tail -3 "$K/reader.log" >&2; exit 1; }
 fi
 
-# Load = voice \t speed \t sentences joined by 0x1f (US). Sentences hold no
-# newlines or US bytes, so this framing is unambiguous.
-{ printf '%s\t%s\t' "$voice" "$speed"; printf '%s' "$sents" | tr '\n' '\037'; } \
+# Load = voice \t speed \t abs-path \t sentences joined by 0x1f (US). The daemon
+# serves the file at /pdf for the split-view render; sentences hold no newlines
+# or US bytes, so this framing is unambiguous.
+abs="$(cd "$(dirname "$pdf")" && pwd)/$(basename "$pdf")"
+{ printf '%s\t%s\t%s\t' "$voice" "$speed" "$abs"; printf '%s' "$sents" | tr '\n' '\037'; } \
   | curl -sf --data-binary @- "$base/load" >/dev/null
 
 command -v open >/dev/null && open "$base/" >/dev/null 2>&1 || true

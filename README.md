@@ -164,14 +164,20 @@ app, drag it to your Dock, then **drop a PDF on it** — or right-click any PDF 
 **Open With ▸ Read Aloud**. (Dropped with no file, it reads the newest PDF in
 `~/Downloads`.) The `pdf-read` command below is the same thing from a terminal.
 
-A small **control bar** opens in your browser: play/pause, skip back/forward, stop,
-and slower/faster — plus **Space**, **←**, **→** as keys. Skip-forward is how you
-blow past junk without waiting for it. Extraction drops page numbers and repeated
-headers/footers so they aren't read; a page range skips whole sections. Control it
-from anywhere with **`pdf-ctl play|pause|next|prev|stop|speed 1.2`** (bind those to
-global hotkeys via [RECIPES.md](RECIPES.md) to drive it while your PDF viewer is
-focused). Needs `./setup-kokoro.sh`. Scanned image PDFs have no text to extract and
-aren't supported (no OCR).
+A **split view** opens in your browser: the rendered PDF on one side, the reader on
+the other. **Select any text on the PDF and the voice reads from there**; the
+sentence being spoken highlights on the page as it goes. Controls: play/pause, skip
+back/forward, stop, slower/faster — plus **Space**, **←**, **→** as keys.
+Skip-forward blows past junk without waiting. The top bar resizes, collapses, or
+stacks the two panes (drag the divider; your layout is remembered). Extraction drops
+page numbers and repeated headers/footers; a page range skips whole sections.
+
+Control it from anywhere with **`pdf-ctl play|pause|next|prev|stop|speed 1.2`** (bind
+those to global hotkeys via [RECIPES.md](RECIPES.md) to drive it while another window
+is focused). Needs `./setup-kokoro.sh`. The PDF is rendered by
+[PDF.js](https://github.com/mozilla/pdf.js) (Apache-2.0), vendored under
+`kokoro/weblib/` and served locally, so it stays 100% offline. Scanned image PDFs
+have no text to extract and aren't supported (no OCR).
 
 ## Barge-in
 
@@ -239,6 +245,7 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice (warm daemon) |
 | `bin/pdf-read` + `bin/pdf-ctl` | read a PDF aloud with a play/pause/skip control bar |
 | `kokoro/reader.py` + `kokoro/pdf_extract.py` | the reader daemon and PDF text cleaner |
+| `kokoro/weblib/` | split-view reader UI + vendored PDF.js (Apache-2.0) |
 | `setup-app.sh` | build a drag-and-drop "Read Aloud" app (no terminal) |
 | `lib/voice-audio.sh` | portable speak/play/stop, detected + overridable |
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |

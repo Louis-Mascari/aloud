@@ -50,20 +50,30 @@ class Player:
         self.voice = DEF_VOICE
         self.speed = DEF_SPEED
         self.gen = 0
+        self.pdf_path = None
         self._stream = None
         self._sr = None
         threading.Thread(target=self._run, daemon=True).start()
 
     # ---- commands (HTTP threads) ----
-    def load(self, sentences, voice, speed):
+    def load(self, sentences, voice, speed, pdf_path=None):
         with self.lock:
             self.sentences = sentences
+            self.pdf_path = pdf_path
             self.cursor = 0
             if voice:
                 self.voice = voice
             if speed:
                 self.speed = speed
             self.paused = not sentences
+            self.gen += 1
+        self.wake.set()
+
+    def seek_to(self, index):
+        with self.lock:
+            if self.sentences:
+                self.cursor = max(0, min(len(self.sentences) - 1, index))
+                self.paused = False   # jump-to (a click/selection) starts playing there
             self.gen += 1
         self.wake.set()
 
@@ -203,49 +213,12 @@ class Player:
 
 player = Player()
 
-PAGE = """<!doctype html><html><head><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<title>PDF Reader</title><style>
-:root{color-scheme:dark}
-body{margin:0;font:15px/1.5 -apple-system,system-ui,sans-serif;background:#15151a;color:#eaeaf0;
- display:flex;flex-direction:column;height:100vh;box-sizing:border-box;padding:14px 16px;gap:12px}
-#bar{display:flex;align-items:center;gap:8px;justify-content:center}
-button{font-size:20px;background:#26262e;color:#eaeaf0;border:0;border-radius:10px;
- padding:10px 14px;cursor:pointer;line-height:1}button:hover{background:#33333d}
-button:active{transform:translateY(1px)}
-#play{font-size:24px;background:#3a6df0}#play:hover{background:#4c7bf5}
-.spd{font-size:13px;padding:8px 10px}
-#meta{text-align:center;font-size:12px;color:#9a9aa8}
-#now{flex:1;overflow:auto;font-size:20px;line-height:1.6;display:flex;align-items:center;
- justify-content:center;text-align:center;padding:8px}
-</style></head><body>
-<div id=now>…</div>
-<div id=meta></div>
-<div id=bar>
- <button title="back" onclick="c('prev')">⏮</button>
- <button id=play title="play/pause" onclick="c('toggle')">▶</button>
- <button title="forward — skip junk" onclick="c('next')">⏭</button>
- <button title="stop" onclick="c('stop')">■</button>
- <button class=spd onclick="c('speed?v='+dn())">‹ slower</button>
- <button class=spd onclick="c('speed?v='+up())">faster ›</button>
-</div>
-<script>
-let spd=1.0;
-function up(){spd=Math.min(2,Math.round((spd+0.1)*10)/10);return spd}
-function dn(){spd=Math.max(0.5,Math.round((spd-0.1)*10)/10);return spd}
-async function c(cmd){const r=await fetch('/'+cmd,{method:'POST'});render(await r.json())}
-function render(s){spd=s.speed;
- document.getElementById('play').textContent=s.playing?'⏸':'▶';
- document.getElementById('now').textContent=s.sentence||'(nothing loaded)';
- document.getElementById('meta').textContent=s.total?
-  ((s.index+1)+' / '+s.total+' · '+s.voice+' · '+s.speed.toFixed(1)+'×'):''}
-async function poll(){try{render(await(await fetch('/status')).json())}catch(e){}}
-setInterval(poll,500);poll();
-document.addEventListener('keydown',e=>{
- if(e.key===' '){e.preventDefault();c('toggle')}
- else if(e.key==='ArrowRight')c('next')
- else if(e.key==='ArrowLeft')c('prev')});
-</script></body></html>"""
+WEBLIB = os.path.join(K, "weblib")
+_STATIC = {
+    "/": ("reader.html", "text/html; charset=utf-8"),
+    "/lib/pdf.mjs": ("pdf.mjs", "text/javascript"),
+    "/lib/pdf.worker.mjs": ("pdf.worker.mjs", "text/javascript"),
+}
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -255,17 +228,39 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(b)))
         self.end_headers()
-        self.wfile.write(b)
+        try:
+            self.wfile.write(b)
+        except (BrokenPipeError, ConnectionResetError):
+            pass   # viewer navigated away mid-response; not our problem
+
+    def _file(self, path, ctype):
+        try:
+            with open(path, "rb") as f:
+                self._send(200, f.read(), ctype)
+        except OSError:
+            self._send(404, "not found")
 
     def _ok(self):
         self._send(200, json.dumps(player.status()), "application/json")
 
     def do_GET(self):
         path = urllib.parse.urlparse(self.path).path
-        if path == "/":
-            self._send(200, PAGE, "text/html; charset=utf-8")
+        if path in _STATIC:
+            name, ctype = _STATIC[path]
+            self._file(os.path.join(WEBLIB, name), ctype)
         elif path == "/status":
             self._ok()
+        elif path == "/sentences":
+            with player.lock:
+                sents = list(player.sentences)
+            self._send(200, json.dumps(sents), "application/json")
+        elif path == "/pdf":
+            with player.lock:
+                pp = player.pdf_path
+            if pp and os.path.isfile(pp):
+                self._file(pp, "application/pdf")
+            else:
+                self._send(404, "no pdf loaded")
         else:
             self._send(404, "not found")
 
@@ -276,11 +271,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         body = self.rfile.read(n).decode("utf-8", "replace") if n else ""
         p = u.path
         if p == "/load":
-            parts = body.split("\t", 2)
+            parts = body.split("\t", 3)   # voice \t speed \t pdf_path \t sentences
             voice = parts[0] if len(parts) > 0 and parts[0] else None
             speed = float(parts[1]) if len(parts) > 1 and parts[1] else None
-            sents = [s for s in parts[2].split("\x1f") if s.strip()] if len(parts) > 2 else []
-            player.load(sents, voice, speed)
+            pdf_path = parts[2] if len(parts) > 2 and parts[2] else None
+            sents = [s for s in parts[3].split("\x1f") if s.strip()] if len(parts) > 3 else []
+            player.load(sents, voice, speed, pdf_path)
+        elif p == "/seek_to":
+            try:
+                player.seek_to(int(q.get("index", ["0"])[0]))
+            except ValueError:
+                pass
         elif p == "/play":
             player.play()
         elif p == "/pause":

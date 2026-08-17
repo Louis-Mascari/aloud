@@ -28,6 +28,7 @@ cp "$REPO/kokoro/daemon.py" "$K/daemon.py"
 cp "$REPO/kokoro/demo-voices.py" "$K/demo-voices.py"
 cp "$REPO/kokoro/reader.py" "$K/reader.py"
 cp "$REPO/kokoro/pdf_extract.py" "$K/pdf_extract.py"
+mkdir -p "$K/weblib"; cp "$REPO"/kokoro/weblib/* "$K/weblib/"   # reader UI + vendored pdf.js
 
 echo
 echo "Kokoro ready. Enable it in ~/.claude/voice/config.sh:"

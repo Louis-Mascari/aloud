@@ -1,0 +1,226 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PDF Reader</title>
+<link rel="icon" href="data:,">
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;display:flex;flex-direction:column;
+ font:15px/1.5 -apple-system,system-ui,sans-serif;background:#15151a;color:#eaeaf0;overflow:hidden}
+#toolbar{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#1d1d24;border-bottom:1px solid #2b2b34;flex:0 0 auto}
+#toolbar .grow{flex:1}
+.tbtn{font-size:13px;background:#26262e;color:#eaeaf0;border:0;border-radius:8px;padding:7px 11px;cursor:pointer}
+.tbtn:hover{background:#33333d}.tbtn.on{background:#3a6df0}
+#app{flex:1;display:flex;min-height:0;min-width:0}
+#app.col{flex-direction:column}
+#pdf{overflow:auto;background:#0d0d10;flex:1 1 60%;min-height:0;min-width:0;padding:12px;display:flex;flex-direction:column;align-items:center;gap:12px}
+#read{overflow:auto;flex:1 1 40%;min-height:0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:18px}
+#divider{flex:0 0 8px;background:#2b2b34;cursor:col-resize}
+#app.col #divider{cursor:row-resize}
+#divider:hover{background:#3a6df0}
+.hidden{display:none!important}
+.page{position:relative;box-shadow:0 1px 6px rgba(0,0,0,.5);background:#fff}
+.page canvas{display:block}
+.textLayer{position:absolute;inset:0;overflow:hidden;line-height:1;text-size-adjust:none;
+ forced-color-adjust:none;transform-origin:0 0;caret-color:transparent;z-index:2}
+.textLayer span{color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0 0}
+.textLayer .hl{background:rgba(90,140,255,.38);border-radius:2px}
+.textLayer ::selection{background:rgba(90,140,255,.45)}
+#now{font-size:21px;line-height:1.55;text-align:center;max-width:46ch}
+#meta{font-size:12px;color:#9a9aa8}
+#bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+#bar button{font-size:20px;background:#26262e;color:#eaeaf0;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;line-height:1}
+#bar button:hover{background:#33333d}#bar button:active{transform:translateY(1px)}
+#play{font-size:24px!important;background:#3a6df0!important}#play:hover{background:#4c7bf5!important}
+.spd{font-size:13px!important;padding:8px 10px!important}
+#hint{font-size:12px;color:#7a7a88}
+</style></head>
+<body>
+<div id="toolbar">
+ <button class="tbtn" id="t-orient" title="side-by-side / stacked">◧ Layout</button>
+ <button class="tbtn" id="t-pdf" title="show/hide PDF">PDF</button>
+ <button class="tbtn" id="t-read" title="show/hide reader">Reader</button>
+ <span class="grow"></span>
+ <span id="hint">select text on the PDF to read from there</span>
+</div>
+<div id="app">
+ <div id="pdf"></div>
+ <div id="divider"></div>
+ <div id="read">
+  <div id="now">…</div>
+  <div id="meta"></div>
+  <div id="bar">
+   <button title="back" onclick="cmd('prev')">⏮</button>
+   <button id="play" title="play/pause" onclick="cmd('toggle')">▶</button>
+   <button title="skip forward (past junk)" onclick="cmd('next')">⏭</button>
+   <button title="stop" onclick="cmd('stop')">■</button>
+   <button class="spd" onclick="nudge(-0.1)">‹ slower</button>
+   <button class="spd" onclick="nudge(0.1)">faster ›</button>
+  </div>
+ </div>
+</div>
+
+<script type="module">
+import * as pdfjsLib from '/lib/pdf.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/lib/pdf.worker.mjs';
+
+const $ = s => document.querySelector(s);
+const app = $('#app'), pdfPane = $('#pdf'), readPane = $('#read'), divider = $('#divider');
+
+/* ---------- transport ---------- */
+let speed = 1.0;
+window.cmd = async c => render(await (await fetch('/'+c, {method:'POST'})).json());
+window.nudge = v => { speed = Math.max(0.5, Math.min(2, Math.round((speed+v)*10)/10));
+  fetch('/speed?v='+speed, {method:'POST'}); };
+function render(s){
+  speed = s.speed;
+  $('#play').textContent = s.playing ? '⏸' : '▶';
+  $('#now').textContent = s.sentence || '(nothing loaded)';
+  $('#meta').textContent = s.total ? `${s.index+1} / ${s.total} · ${s.voice} · ${s.speed.toFixed(1)}×` : '';
+  if (s.total && s.index !== lastIndex){ lastIndex = s.index; highlight(s.sentence); }
+}
+let lastIndex = -1;
+async function poll(){ try{ render(await (await fetch('/status')).json()); }catch(e){} }
+setInterval(poll, 500);
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === ' '){ e.preventDefault(); cmd('toggle'); }
+  else if (e.key === 'ArrowRight') cmd('next');
+  else if (e.key === 'ArrowLeft') cmd('prev');
+});
+
+/* ---------- layout (persisted) ---------- */
+const LS = 'pdfreader.layout';
+let layout = Object.assign({orient:'row', split:60, show:'both'}, JSON.parse(localStorage.getItem(LS)||'{}'));
+function applyLayout(){
+  app.classList.toggle('col', layout.orient === 'col');
+  divider.style.cursor = layout.orient === 'col' ? 'row-resize' : 'col-resize';
+  const showPdf = layout.show !== 'read', showRead = layout.show !== 'pdf';
+  pdfPane.classList.toggle('hidden', !showPdf);
+  readPane.classList.toggle('hidden', !showRead);
+  divider.classList.toggle('hidden', !(showPdf && showRead));
+  $('#t-pdf').classList.toggle('on', showPdf);
+  $('#t-read').classList.toggle('on', showRead);
+  if (showPdf && showRead){
+    const basis = layout.split + '%';
+    pdfPane.style.flex = `0 0 ${basis}`;
+    readPane.style.flex = '1 1 auto';
+  } else { pdfPane.style.flex = readPane.style.flex = '1 1 auto'; }
+  localStorage.setItem(LS, JSON.stringify(layout));
+}
+$('#t-orient').onclick = () => { layout.orient = layout.orient === 'row' ? 'col' : 'row'; applyLayout(); };
+$('#t-pdf').onclick = () => { layout.show = layout.show === 'pdf' ? 'both' : (layout.show === 'read' ? 'both' : 'read'); applyLayout(); };
+$('#t-read').onclick = () => { layout.show = layout.show === 'read' ? 'both' : (layout.show === 'pdf' ? 'both' : 'pdf'); applyLayout(); };
+// drag divider
+divider.addEventListener('pointerdown', e => {
+  divider.setPointerCapture(e.pointerId);
+  const move = ev => {
+    const r = app.getBoundingClientRect();
+    let pct = layout.orient === 'col'
+      ? (ev.clientY - r.top) / r.height * 100
+      : (ev.clientX - r.left) / r.width * 100;
+    layout.split = Math.max(15, Math.min(85, pct));
+    pdfPane.style.flex = `0 0 ${layout.split}%`;
+  };
+  const up = () => { divider.releasePointerCapture(e.pointerId);
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+    localStorage.setItem(LS, JSON.stringify(layout)); };
+  document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+});
+applyLayout();
+
+/* ---------- normalization (shared by highlight + select-to-read) ---------- */
+const PUA = {'\uF000':'ff','\uF001':'fi','\uF002':'fl','\uF003':'ffi','\uF004':'ffl'};
+function normChars(s){
+  s = s.replace(/[\uF000-\uF004]/g, m => PUA[m]).normalize('NFKC').toLowerCase();
+  const out = [];
+  for (const ch of s) if (/[a-z0-9]/.test(ch)) out.push(ch);
+  return out;
+}
+function normStr(s){ return normChars(s).join(''); }
+
+/* ---------- render PDF + build match indexes ---------- */
+let spans = [];              // every text-layer span, document order
+let normTL = '', mapTL = []; // normalized doc text -> span index (for highlight)
+let normS = '', mapS = [];   // normalized sentence text -> sentence index (for select-to-read)
+let tlSearchFrom = 0;
+
+(async function initPdf(){
+  // sentence corpus for select-to-read
+  try {
+    const sentences = await (await fetch('/sentences')).json();
+    sentences.forEach((s, si) => { for (const ch of normChars(s)){ normS += ch; mapS.push(si); } });
+  } catch(e){}
+
+  let pdf;
+  try { pdf = await pdfjsLib.getDocument('/pdf').promise; }
+  catch(e){ pdfPane.innerHTML = '<p style="color:#9a9aa8;margin-top:2em">No PDF to display.</p>'; return; }
+
+  const first = await pdf.getPage(1);
+  const base = first.getViewport({scale:1});
+  const fit = Math.max(0.5, Math.min(3, (pdfPane.clientWidth - 32) / base.width));
+  const dpr = window.devicePixelRatio || 1;
+
+  for (let n = 1; n <= pdf.numPages; n++){
+    const page = await pdf.getPage(n);
+    const vp = page.getViewport({scale: fit});
+    const holder = document.createElement('div');
+    holder.className = 'page';
+    holder.style.width = vp.width + 'px';
+    holder.style.height = vp.height + 'px';
+    holder.style.setProperty('--scale-factor', fit);
+    pdfPane.appendChild(holder);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.floor(vp.width * dpr);
+    canvas.height = Math.floor(vp.height * dpr);
+    canvas.style.width = vp.width + 'px';
+    canvas.style.height = vp.height + 'px';
+    holder.appendChild(canvas);
+    page.render({canvasContext: canvas.getContext('2d'),
+      transform: dpr !== 1 ? [dpr,0,0,dpr,0,0] : null, viewport: vp});
+
+    const tlDiv = document.createElement('div');
+    tlDiv.className = 'textLayer';
+    holder.appendChild(tlDiv);
+    await pdfjsLib.renderTextLayer({textContentSource: page.streamTextContent(), container: tlDiv, viewport: vp}).promise;
+    for (const sp of tlDiv.querySelectorAll('span')){
+      if (sp.childElementCount || !sp.textContent) continue;   // skip marked-content wrappers
+      const si = spans.length; spans.push(sp);
+      for (const ch of normChars(sp.textContent)){ normTL += ch; mapTL.push(si); }
+    }
+  }
+})();
+
+function clearHl(){ for (const sp of spans) sp.classList.remove('hl'); }
+function highlight(sentence){
+  if (!normTL || !sentence) return;
+  const q = normStr(sentence).slice(0, 60);
+  if (q.length < 4) return;
+  let at = normTL.indexOf(q, tlSearchFrom);
+  if (at < 0) at = normTL.indexOf(q);          // wrap (seek backwards / repeat)
+  if (at < 0){ tlSearchFrom = 0; return; }
+  tlSearchFrom = at + q.length;
+  clearHl();
+  const a = mapTL[at], b = mapTL[Math.min(mapTL.length-1, at + normStr(sentence).length - 1)];
+  for (let i = a; i <= b; i++) spans[i] && spans[i].classList.add('hl');
+  spans[a] && spans[a].scrollIntoView({block:'center', behavior:'smooth'});
+}
+
+/* ---------- select on the PDF -> read from there ---------- */
+pdfPane.addEventListener('mouseup', () => {
+  const sel = (window.getSelection().toString() || '').trim();
+  if (sel.length < 3 || !normS) return;
+  const q = normStr(sel).slice(0, 60);
+  if (q.length < 3) return;
+  const at = normS.indexOf(q);
+  if (at < 0) return;
+  const idx = mapS[at];
+  tlSearchFrom = 0;
+  fetch('/seek_to?index=' + idx, {method:'POST'}).then(r => r.json()).then(render);
+  window.getSelection().removeAllRanges();
+});
+
+poll();
+</script>
+</body></html>

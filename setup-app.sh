@@ -10,7 +10,7 @@ PDFREAD="$REPO/bin/pdf-read"
 
 tmp="$(mktemp).applescript"
 cat > "$tmp" <<APPLESCRIPT
--- Read a dropped/opened PDF (or the newest in Downloads) via claude-voice.
+-- Read a dropped/opened PDF (or the newest in Downloads) via aloud.
 on readFile(posixPath)
 	do shell script quoted form of "$PDFREAD" & " " & quoted form of posixPath & " >/dev/null 2>&1 &"
 end readFile

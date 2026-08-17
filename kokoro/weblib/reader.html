@@ -19,9 +19,15 @@ body{margin:0;height:100vh;display:flex;flex-direction:column;
  background:linear-gradient(90deg,var(--accent),#8a5bf0);-webkit-background-clip:text;background-clip:text;color:transparent}
 #app{flex:1;display:flex;min-height:0;min-width:0}
 #app.col{flex-direction:column}
-#pdf{overflow:auto;background:var(--panel2);flex:1 1 60%;min-height:0;min-width:0;padding:14px;position:relative;
- display:flex;flex-direction:column;align-items:center;gap:14px;scroll-behavior:smooth}
-#read{flex:1 1 40%;min-height:0;min-width:0;display:grid;grid-template-rows:1fr auto}
+#pdf{background:var(--panel2);flex:1 1 60%;min-height:0;min-width:0;position:relative;display:flex;flex-direction:column;overflow:hidden}
+#pdfScroll{flex:1;min-height:0;overflow:auto;padding:14px;position:relative;scroll-behavior:smooth;
+ display:flex;flex-direction:column;align-items:center;gap:14px}
+#read{flex:1 1 40%;min-height:0;min-width:0;display:grid;grid-template-rows:1fr auto;position:relative}
+.paneCtl{position:absolute;z-index:5;display:flex;gap:4px;align-items:center;background:rgba(28,28,35,.92);
+ border:1px solid var(--edge);border-radius:10px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.paneCtl.br{bottom:14px;right:16px}.paneCtl.tr{top:12px;right:14px}
+.paneCtl button{font-size:13px;background:#2a2a33;color:var(--fg);border:0;border-radius:7px;padding:6px 10px;cursor:pointer;line-height:1}
+.paneCtl button:hover{background:#37374280}
 #teleWrap{overflow:auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:22px 26px}
 #controls{border-top:1px solid var(--edge);background:var(--panel);padding:14px 18px 16px;
  display:flex;flex-direction:column;align-items:center;gap:10px}
@@ -64,21 +70,24 @@ select#voice{font-size:13px;background:#26262e;color:var(--fg);border:0;border-r
  <button class="tbtn" id="t-orient" title="side-by-side / stacked">◧ Layout</button>
  <button class="tbtn" id="t-pdf" title="show / hide PDF">PDF</button>
  <button class="tbtn" id="t-read" title="show / hide reader">Reader</button>
- <button class="tbtn" id="t-fit" title="fit PDF width to pane">Fit</button>
- <span class="sep"></span>
- <span class="zlabel">PDF</span>
- <button class="tbtn" title="zoom PDF out (⌘-scroll)" onclick="zoomPdf(1/1.15)">−</button>
- <button class="tbtn" title="zoom PDF in (⌘-scroll)" onclick="zoomPdf(1.15)">+</button>
- <span class="zlabel">Text</span>
- <button class="tbtn" title="smaller reader text" onclick="zoomText(-1)">A−</button>
- <button class="tbtn" title="larger reader text" onclick="zoomText(1)">A+</button>
  <span class="grow"></span>
  <span id="hint">select text on the PDF to read from there</span>
 </div>
 <div id="app">
- <div id="pdf"></div>
+ <div id="pdf">
+  <div id="pdfScroll"></div>
+  <div class="paneCtl br" id="pdfZoom">
+   <button title="zoom out (⌘-scroll)" onclick="zoomPdf(1/1.15)">−</button>
+   <button title="fit width" onclick="fitPdf()">Fit</button>
+   <button title="zoom in (⌘-scroll)" onclick="zoomPdf(1.15)">+</button>
+  </div>
+ </div>
  <div id="divider"></div>
  <div id="read">
+  <div class="paneCtl tr" id="textZoom">
+   <button title="smaller text" onclick="zoomText(-1)">A−</button>
+   <button title="larger text" onclick="zoomText(1)">A+</button>
+  </div>
   <div id="teleWrap">
    <div id="tele">
     <div class="line ctx" id="prev"></div>
@@ -106,7 +115,7 @@ select#voice{font-size:13px;background:#26262e;color:var(--fg);border:0;border-r
 import * as pdfjsLib from '/lib/pdf.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/lib/pdf.worker.mjs';
 const $ = s => document.querySelector(s);
-const app=$('#app'), pdfPane=$('#pdf'), readPane=$('#read'), divider=$('#divider');
+const app=$('#app'), pdfWrap=$('#pdf'), pdfPane=$('#pdfScroll'), readPane=$('#read'), divider=$('#divider');
 
 /* ---------- normalization (shared by highlight + select-to-read) ---------- */
 const PUA={'\uF000':'ff','\uF001':'fi','\uF002':'fl','\uF003':'ffi','\uF004':'ffl'};
@@ -166,13 +175,14 @@ let layout=Object.assign({orient:'row',split:60,show:'both',readScale:1},JSON.pa
 function saveLayout(){ localStorage.setItem(LS,JSON.stringify(layout)); }
 function applyLayout(){
   app.classList.toggle('col',layout.orient==='col');
+  $('#t-orient').textContent=(layout.orient==='row'?'◧':'⬓')+' Layout';
   const showPdf=layout.show!=='read', showRead=layout.show!=='pdf';
-  pdfPane.classList.toggle('hidden',!showPdf);
+  pdfWrap.classList.toggle('hidden',!showPdf);
   readPane.classList.toggle('hidden',!showRead);
   divider.classList.toggle('hidden',!(showPdf&&showRead));
   $('#t-pdf').classList.toggle('on',showPdf);
   $('#t-read').classList.toggle('on',showRead);
-  pdfPane.style.flex = (showPdf&&showRead) ? `0 0 ${layout.split}%` : '1 1 auto';
+  pdfWrap.style.flex = (showPdf&&showRead) ? `0 0 ${layout.split}%` : '1 1 auto';
   readPane.style.flex='1 1 auto';
   readPane.style.setProperty('--read-scale',layout.readScale);
   saveLayout();
@@ -186,7 +196,7 @@ divider.addEventListener('pointerdown',e=>{
   divider.setPointerCapture(e.pointerId);
   const move=ev=>{ const r=app.getBoundingClientRect();
     const pct=layout.orient==='col'?(ev.clientY-r.top)/r.height*100:(ev.clientX-r.left)/r.width*100;
-    layout.split=Math.max(15,Math.min(85,pct)); pdfPane.style.flex=`0 0 ${layout.split}%`; };
+    layout.split=Math.max(15,Math.min(85,pct)); pdfWrap.style.flex=`0 0 ${layout.split}%`; };
   const up=()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); saveLayout(); };
   document.addEventListener('pointermove',move); document.addEventListener('pointerup',up);
 });
@@ -290,7 +300,7 @@ function applyScale(){ fit=baseFit*pdfZoom;
 window.zoomPdf=f=>{ pdfZoom=Math.max(0.4,Math.min(4,pdfZoom*f)); applyScale(); };
 function refit(){ if(!pdfDoc) return;
   baseFit=clampFit((pdfPane.clientWidth-40)/baseVp.width); pdfZoom=1; applyScale(); }
-$('#t-fit').onclick=refit;
+window.fitPdf=refit;
 pdfPane.addEventListener('wheel',e=>{ if(e.ctrlKey||e.metaKey){ e.preventDefault(); zoomPdf(e.deltaY<0?1.1:1/1.1); }},{passive:false});
 
 /* ---------- voice picker (grouped by accent + gender) ---------- */

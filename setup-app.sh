@@ -42,8 +42,15 @@ if command -v iconutil >/dev/null && [ -f "$REPO/mac/icon.png" ]; then
     sips -z "$s" "$s"           "$REPO/mac/icon.png" --out "$set/icon_${s}x${s}.png"      >/dev/null
     sips -z "$((s*2))" "$((s*2))" "$REPO/mac/icon.png" --out "$set/icon_${s}x${s}@2x.png" >/dev/null
   done
-  iconutil -c icns "$set" -o "$APP/Contents/Resources/applet.icns"
-  touch "$APP"   # nudge Finder/LaunchServices to pick up the new icon
+  iconutil -c icns "$set" -o /tmp/spititout.icns
+  # osacompile names the icon droplet.icns (an `on open` handler makes this a
+  # droplet) or applet.icns; overwrite whichever exist so the icon actually shows.
+  for name in droplet applet; do
+    [ -f "$APP/Contents/Resources/$name.icns" ] && cp /tmp/spititout.icns "$APP/Contents/Resources/$name.icns"
+  done
+  touch "$APP"
+  command -v lsregister >/dev/null && lsregister -f "$APP" 2>/dev/null || \
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" 2>/dev/null || true
 fi
 
 echo "Built: $APP"

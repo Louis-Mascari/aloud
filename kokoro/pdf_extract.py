@@ -25,17 +25,22 @@ SENT_CAP = 350  # split runaway "sentences" longer than this (also dodges the
 # "N / M", "- N -" never occur as body prose, so they're safe to strip wherever
 # pypdf places them in the line order.
 _PAGE_LABEL = re.compile(
-    r"^\s*(page\s+\d{1,4}(\s+of\s+\d{1,4})?|\d{1,4}\s*/\s*\d{1,4}|-\s*\d{1,4}\s*-)\s*$",
+    r"^\s*(page\s+\d{1,4}(\s+of\s+\d{1,4})?|pages?|pg|\d{1,4}\s*/\s*\d{1,4}|-\s*\d{1,4}\s*-)[.)]?\s*$",
     re.IGNORECASE)
-# A bare number or roman numeral is only furniture in the header/footer zone;
-# mid-body it could be a year, price, or table cell.
-_PAGE_BARE = re.compile(r"^\s*(\d{1,4}|[ivxlcdm]{1,7})\s*$", re.IGNORECASE)
+# A bare number is only furniture in the header/footer zone; mid-body it could be
+# a year/price/table cell. Roman numerals are excluded ("[ivxlcdm]+" eats Civil,
+# MIDI, DVD, mix); digit pagination covers almost everything.
+_PAGE_BARE = re.compile(r"^\s*\d{1,4}\s*$")
 
 # Subset fonts encode ligatures in the Private Use Area (Adobe convention), which
 # NFKC can't expand. Map the common ones; any leftover PUA/control glyph becomes a
 # space so no unreadable "tofu" reaches the voice.
 _PUA = {"\uF000": "ff", "\uF001": "fi", "\uF002": "fl", "\uF003": "ffi", "\uF004": "ffl"}
-_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[\"'(\[A-Z0-9])")
+# Split on a sentence ender + space + an opening letter/quote. Digits are NOT a
+# boundary trigger, so "Fig. 3", "No. 5", "et al. 2020" don't shatter. A
+# post-split repair (in extract_sentences) rejoins pieces that start lowercase,
+# with punctuation, or with a digit — the leftover abbreviation fragments.
+_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[\"'(\[A-Z])")
 
 
 def _norm(line):
@@ -136,30 +141,58 @@ def _cap(s):
 
 
 def _page_body_text(page):
-    """Text with the top/bottom 8% band dropped, by glyph y-position.
+    """Reconstruct body lines from positioned glyph fragments, header/footer dropped.
 
-    pypdf often glues the footer (copyright, page number) onto body text on the
-    same extracted line, so line-content filtering can't isolate it. Filtering by
-    vertical position removes headers/footers regardless of how lines are joined.
-    Newlines (y==0 marker calls) are kept so line structure survives.
+    Rather than trust pypdf's line assembly (which glues a footer label onto body
+    text), collect each text fragment's device position, drop the top/bottom 8%
+    band, then group the survivors into lines by y and order them top-to-bottom,
+    left-to-right. This keeps a footer label that sits in the body band on its own
+    line instead of fused to prose, so the repeated-line detector can catch it —
+    no per-document rule. Single-column reading order; multi-column interleaves
+    (ponytail: column detection if a two-column doc shows up).
     """
+    try:
+        rot = int(getattr(page, "rotation", 0) or 0) % 360
+    except Exception:
+        rot = 0
+    if rot in (90, 270):
+        return page.extract_text() or ""     # y-band is meaningless on a rotated page
     try:
         h = float(page.mediabox.height)
     except Exception:
         h = 792.0
     lo, hi = h * 0.08, h * 0.92
-    parts = []
+    frags = []
 
     def visit(text, cm, tm, font, size):
-        y = tm[5]
-        if y == 0 or lo < y < hi:
-            parts.append(text)
+        if not text.strip():
+            return
+        # compose the text matrix with the CTM for true device x/y (tm alone is
+        # wrong when the page positions content through a cm/XObject transform).
+        y = tm[4] * cm[1] + tm[5] * cm[3] + cm[5]
+        x = tm[4] * cm[0] + tm[5] * cm[2] + cm[4]
+        if lo < y < hi:
+            frags.append((y, x, size or 10.0, text))
 
     try:
         page.extract_text(visitor_text=visit)
     except Exception:
         return page.extract_text() or ""     # visitor unsupported: fall back to plain
-    return "".join(parts)
+    if not frags:
+        return ""
+
+    frags.sort(key=lambda f: (-f[0], f[1]))   # top-to-bottom, then left-to-right
+    lines, cur, cy, csz = [], [], None, 10.0
+    for y, x, sz, t in frags:
+        if cy is not None and abs(y - cy) <= 0.6 * max(csz, sz):   # same line (super/subscripts join)
+            cur.append((x, t))
+        else:
+            if cur:
+                lines.append(cur)
+            cur, cy, csz = [(x, t)], y, sz
+    if cur:
+        lines.append(cur)
+    return "\n".join("".join(t for _, t in sorted(ln)) for ln in lines)
 
 
 def extract_sentences(path, pages=None):
@@ -183,15 +216,24 @@ def extract_sentences(path, pages=None):
                 continue
             if k in zone and _PAGE_BARE.match(nl):
                 continue
-            kept.append(ln)
+            kept.append(nl)
         cleaned = _clean_glyphs("\n".join(kept))
         cleaned = re.sub(r"-\n(\w)", r"\1", cleaned)      # join hyphenated line breaks
         page_lines = [ln for ln in cleaned.split("\n") if _norm(ln)]
         for unit in _merge_wrapped(page_lines):           # reflow wrapped prose
             for part in _SPLIT.split(unit):               # split real sentences
                 part = part.strip()
-                if part:
-                    for piece in _cap(part):
+                if not part:
+                    continue
+                for piece in _cap(part):
+                    # A piece that opens lowercase, with punctuation, or with a
+                    # digit isn't a new sentence — it's the tail of the previous
+                    # one the splitter over-cut ("Fig." | "3", "shows" | ", we...").
+                    if (result and result[-1][1] == pageno
+                            and (piece[:1].islower() or piece[:1].isdigit()
+                                 or piece[0] in ",;:.)]}%")):
+                        result[-1] = (result[-1][0] + " " + piece, pageno)
+                    else:
                         result.append((piece, pageno))
     return result, (lo, hi, n)
 
@@ -206,12 +248,15 @@ def _selftest():
         except ValueError:
             pass
 
-    for lbl in ["Page 2 of 3", "3 / 9", "- 7 -"]:            # furniture anywhere
+    for lbl in ["Page 2 of 3", "3 / 9", "- 7 -", "Page", "pg", "pages"]:   # furniture anywhere
         assert _PAGE_LABEL.match(_norm(lbl)), lbl
-    for bare in ["1", "iii", "42"]:                          # furniture only in zone
+    for bare in ["1", "42"]:                                 # bare number: furniture in zone only
         assert _PAGE_BARE.match(_norm(bare)) and not _PAGE_LABEL.match(_norm(bare)), bare
-    for keep in ["Introduction", "10x growth", "It grew."]:  # never furniture
+    # roman-charset words must NOT be eaten now that roman is out of _PAGE_BARE
+    for keep in ["Introduction", "10x growth", "It grew.", "Civil", "MIDI", "DVD", "mix"]:
         assert not _PAGE_LABEL.match(_norm(keep)) and not _PAGE_BARE.match(_norm(keep)), keep
+    # digit after an abbreviation must not trigger a split
+    assert len(_SPLIT.split("See Fig. 3 for details.")) == 1
     # a copyright line repeating on most pages is caught anywhere (not just the zone)
     cw = _running([["Body one.", "© 2025 Acme"]] * 5 + [["© 2025 Acme", "Body two."]] * 5, 10)
     assert "© 2025 Acme" in cw, cw

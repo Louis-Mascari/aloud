@@ -168,9 +168,9 @@ async function popOut(){
 
 /* ---------- transport + teleprompter ---------- */
 let speed=1.0, lastIndex=-1, sentences=[], pageOf=[];
-window.cmd = async c => render(await (await fetch('/'+c,{method:'POST'})).json());
-window.nudge = v => { speed=Math.max(0.5,Math.min(2,Math.round((speed+v)*10)/10)); fetch('/speed?v='+speed,{method:'POST'}); };
-window.seekTo = i => fetch('/seek_to?index='+i,{method:'POST'}).then(r=>r.json()).then(render);
+window.cmd = async c => { try{ render(await (await fetch('/'+c,{method:'POST'})).json()); }catch(e){} };
+window.nudge = v => { speed=Math.max(0.5,Math.min(2,Math.round((speed+v)*10)/10)); fetch('/speed?v='+speed,{method:'POST'}).catch(()=>{}); };
+window.seekTo = i => fetch('/seek_to?index='+i,{method:'POST'}).then(r=>r.json()).then(render).catch(()=>{});
 function txt(i){ return (i>=0 && i<sentences.length) ? sentences[i] : ''; }
 function render(s){
   speed=s.speed; setPlaying(s.playing);
@@ -192,7 +192,7 @@ $('#prog').onclick=e=>{ const r=e.currentTarget.getBoundingClientRect();
 async function poll(){ try{ render(await (await fetch('/status')).json()); }catch(e){} }
 setInterval(poll,500);
 document.addEventListener('keydown',e=>{
-  if(e.target.tagName==='SELECT') return;
+  if(e.target.tagName==='SELECT'||e.target.tagName==='BUTTON') return;
   if(e.key===' '){e.preventDefault();cmd('toggle');}
   else if(e.key==='ArrowRight')cmd('next');
   else if(e.key==='ArrowLeft')cmd('prev');
@@ -293,8 +293,11 @@ function freePage(rec){
   const cv=rec.holder.querySelector('canvas'); cv.width=0; cv.height=0;
   rec.holder.querySelector('.textLayer').replaceChildren();
   rec.norm=''; rec.pos=[];
+  if(rec.page&&rec.page.cleanup){ try{ rec.page.cleanup(); }catch(e){} }  // release pdf.js page internals
+  rec.page=null;   // re-fetched cheaply from pdf.js cache on next render
 }
 async function syncHighlight(index, sentence){
+  if(window.CSS && CSS.highlights) CSS.highlights.delete('sentence');  // clear first so a failed locate never leaves the old sentence lit
   const pg=pageOf[index]; const rec=pg&&recs[pg-1]; if(!rec) return;
   await renderPage(rec);
   const q=normStr(sentence); if(q.length<4||!rec.norm) return;   // no match -> don't yank the view
@@ -352,7 +355,7 @@ const friendly=v=>v.slice(3).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase(
           + `</optgroup>`;
     }
     const sel=$('#voice'); sel.innerHTML=html;
-    sel.onchange=()=>fetch('/voice?v='+encodeURIComponent(sel.value),{method:'POST'}).then(r=>r.json()).then(render);
+    sel.onchange=()=>fetch('/voice?v='+encodeURIComponent(sel.value),{method:'POST'}).then(r=>r.json()).then(render).catch(()=>{});
   }catch(e){}
 })();
 

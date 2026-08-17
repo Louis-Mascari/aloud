@@ -159,6 +159,11 @@ pdf-read ~/Downloads/paper.pdf          # whole document
 pdf-read ~/Downloads/paper.pdf 3-40     # pages 3–40 (skip cover, TOC, references)
 ```
 
+No terminal, no filename: run **`./setup-app.sh`** once to build a **Read Aloud**
+app, drag it to your Dock, then **drop a PDF on it** — or right-click any PDF ▸
+**Open With ▸ Read Aloud**. (Dropped with no file, it reads the newest PDF in
+`~/Downloads`.) The `pdf-read` command below is the same thing from a terminal.
+
 A small **control bar** opens in your browser: play/pause, skip back/forward, stop,
 and slower/faster — plus **Space**, **←**, **→** as keys. Skip-forward is how you
 blow past junk without waiting for it. Extraction drops page numbers and repeated
@@ -234,6 +239,7 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice (warm daemon) |
 | `bin/pdf-read` + `bin/pdf-ctl` | read a PDF aloud with a play/pause/skip control bar |
 | `kokoro/reader.py` + `kokoro/pdf_extract.py` | the reader daemon and PDF text cleaner |
+| `setup-app.sh` | build a drag-and-drop "Read Aloud" app (no terminal) |
 | `lib/voice-audio.sh` | portable speak/play/stop, detected + overridable |
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |
 | `RECIPES.md` | bind `voice stop` per-terminal or as an OS-global hotkey |

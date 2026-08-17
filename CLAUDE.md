@@ -1,14 +1,18 @@
 # Working in this repo (for coding agents)
 
-Two subsystems share the Kokoro TTS backend:
+**Spit It Out** is a collection of local "listen instead of read" tools sharing
+one Kokoro TTS engine. Tools are separate top-level dirs; `kokoro/` is the shared
+engine. (Repo is still named `claude-voice` on GitHub — rename is a separate,
+optional step.)
 
-- **claude-voice** — async spoken summaries + tab state for Claude Code in
-  WezTerm. Hooks (`hooks/`) write state files; `bin/voice` + `lib/*.sh` read
-  them; `kokoro/daemon.py` is the warm notification-TTS daemon.
-- **Spit It Out** — the PDF read-along. `bin/pdf-read` / `bin/pdf-ctl` drive
-  `kokoro/reader.py` (an HTTP daemon on `127.0.0.1:8477`) that extracts with
-  `kokoro/pdf_extract.py` and serves the split-view UI in `kokoro/weblib/`.
-  "Spit It Out" is the user-facing brand; the repo/paths stay `claude-voice`.
+- **claude-voice** (`hooks/`, `lib/`, `bin/voice`, `wezterm/`) — async spoken
+  summaries + tab state for Claude Code in WezTerm. Hooks write state files;
+  `bin/voice` + `lib/*.sh` read them; `kokoro/daemon.py` is the warm
+  notification-TTS daemon.
+- **PDF reader** (`pdf-reader/`) — the read-along. `bin/pdf-read` / `bin/pdf-ctl`
+  drive `pdf-reader/reader.py` (an HTTP daemon on `127.0.0.1:8477`) that extracts
+  with `pdf-reader/pdf_extract.py` and serves the split-view UI in
+  `pdf-reader/weblib/`. The desktop app is "Spit It Out".
 
 ## The one gotcha that will waste your time
 
@@ -18,9 +22,9 @@ model weights and the `.venv` live). Editing a repo file changes nothing until
 you copy it over:
 
 ```bash
-K=~/.claude/voice/kokoro
-cp kokoro/reader.py kokoro/pdf_extract.py "$K"/
-cp kokoro/weblib/reader.html "$K"/weblib/
+K=~/.claude/voice/kokoro   # the reader shares the Kokoro runtime (venv + weights)
+cp pdf-reader/reader.py pdf-reader/pdf_extract.py "$K"/
+cp pdf-reader/weblib/reader.html "$K"/weblib/
 ```
 
 `bin/pdf-read`, `bin/pdf-ctl`, `bin/voice` run from the repo (they're on PATH via
@@ -30,8 +34,8 @@ cp kokoro/weblib/reader.html "$K"/weblib/
 
 ```bash
 K=~/.claude/voice/kokoro; PY=$K/.venv/bin/python
-$PY kokoro/pdf_extract.py                      # extraction self-test (asserts)
-pkill -f kokoro/reader.py; $PY $K/reader.py &   # restart the daemon after a .py edit
+$PY pdf-reader/pdf_extract.py                  # extraction self-test (asserts)
+pkill -f "$K/reader.py"; $PY $K/reader.py &     # restart the daemon after a .py edit
 pdf-read ~/Downloads/some.pdf                  # extract + load + open the UI
 pdf-ctl status                                 # {playing,index,total,sentence,...}
 ```

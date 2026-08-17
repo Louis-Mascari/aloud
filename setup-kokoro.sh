@@ -26,9 +26,11 @@ base="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-
 
 cp "$REPO/kokoro/daemon.py" "$K/daemon.py"
 cp "$REPO/kokoro/demo-voices.py" "$K/demo-voices.py"
-cp "$REPO/kokoro/reader.py" "$K/reader.py"
-cp "$REPO/kokoro/pdf_extract.py" "$K/pdf_extract.py"
-mkdir -p "$K/weblib"; cp "$REPO"/kokoro/weblib/* "$K/weblib/"   # reader UI + vendored pdf.js
+# Spit It Out (PDF reader) shares this Kokoro runtime: its code lives in
+# pdf-reader/ but deploys here alongside the model weights and venv.
+cp "$REPO/pdf-reader/reader.py" "$K/reader.py"
+cp "$REPO/pdf-reader/pdf_extract.py" "$K/pdf_extract.py"
+mkdir -p "$K/weblib"; cp "$REPO"/pdf-reader/weblib/* "$K/weblib/"
 
 echo
 echo "Kokoro ready. Enable it in ~/.claude/voice/config.sh:"

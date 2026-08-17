@@ -1,4 +1,23 @@
-# claude-voice
+# Spit It Out
+
+A small collection of local, work-safe tools for people who'd rather **listen
+than read** — less eye strain, fewer walls of text to get through in a day.
+Everything runs on your machine (no cloud, no accounts, no IP concerns), sharing
+one local [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) neural voice.
+
+## The tools
+
+| Tool | What it does | Start here |
+|------|--------------|-----------|
+| **claude-voice** | Claude Code talks back a short spoken recap each turn instead of you reading walls of terminal output; tabs flag when they need you. | [claude-voice](#claude-voice) |
+| **PDF reader** | Read-along for PDFs: the page on one side, a voice reading it on the other — select-to-read, follow-highlight, transport controls. The **Spit It Out** desktop app. | [Read a PDF aloud](#read-a-pdf-aloud) |
+
+Each tool is its own top-level directory (`hooks/`+`lib/` for claude-voice,
+`pdf-reader/` for the reader); the shared TTS engine lives in `kokoro/`. A future
+tool is a new directory that reuses the same engine and `~/.claude/voice/kokoro`
+runtime.
+
+## claude-voice
 
 Talk to Claude Code, and have it talk back — without a hot mic and without
 reading walls of text. Local, work-safe, and quiet when you need it to be.
@@ -180,7 +199,7 @@ Control it from anywhere with **`pdf-ctl play|pause|next|prev|stop|speed 1.2`** 
 those to global hotkeys via [RECIPES.md](RECIPES.md) to drive it while another window
 is focused). Needs `./setup-kokoro.sh`. The PDF is rendered by
 [PDF.js](https://github.com/mozilla/pdf.js) (Apache-2.0), vendored under
-`kokoro/weblib/` and served from `127.0.0.1` (Host-checked), so it stays 100%
+`pdf-reader/weblib/` and served from `127.0.0.1` (Host-checked), so it stays 100%
 offline. Scanned image PDFs have no text to extract and aren't supported (no OCR).
 
 ## Barge-in
@@ -245,11 +264,11 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `hooks/on-session.sh` | clear a pane's files on start/end (no stale glyphs) |
 | `bin/voice` | the CLI — run `voice help` for keys + commands (`voices`, `use`, `speed`, `autospeak`, …) |
 | `lib/voice-lib.sh` | state files, focus logic, the `voice` helpers |
-| `kokoro/` | the neural-voice daemon and voice auditioner |
-| `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice (warm daemon) |
+| `kokoro/` | shared TTS engine — the neural-voice daemon and voice auditioner |
+| `bin/kokoro-say` + `setup-kokoro.sh` | local neural voice (warm daemon), shared by all tools |
 | `bin/pdf-read` + `bin/pdf-ctl` | Spit It Out: read a PDF aloud (split view) + transport CLI |
-| `kokoro/reader.py` + `kokoro/pdf_extract.py` | the reader daemon and PDF text extractor |
-| `kokoro/weblib/` | split-view reader UI + vendored PDF.js (Apache-2.0) |
+| `pdf-reader/reader.py` + `pdf-reader/pdf_extract.py` | the reader daemon and PDF text extractor |
+| `pdf-reader/weblib/` | split-view reader UI + vendored PDF.js (Apache-2.0) |
 | `setup-app.sh` + `mac/icon.png` | build the drag-and-drop "Spit It Out" app (no terminal) |
 | `lib/voice-audio.sh` | portable speak/play/stop, detected + overridable |
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |

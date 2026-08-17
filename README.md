@@ -159,25 +159,29 @@ pdf-read ~/Downloads/paper.pdf          # whole document
 pdf-read ~/Downloads/paper.pdf 3-40     # pages 3–40 (skip cover, TOC, references)
 ```
 
-No terminal, no filename: run **`./setup-app.sh`** once to build a **Read Aloud**
+No terminal, no filename: run **`./setup-app.sh`** once to build the **Spit It Out**
 app, drag it to your Dock, then **drop a PDF on it** — or right-click any PDF ▸
-**Open With ▸ Read Aloud**. (Dropped with no file, it reads the newest PDF in
-`~/Downloads`.) The `pdf-read` command below is the same thing from a terminal.
+**Open With ▸ Spit It Out**. (Dropped with no file, it reads the newest PDF in
+`~/Downloads`.) The `pdf-read` command above is the same thing from a terminal.
 
 A **split view** opens in your browser: the rendered PDF on one side, the reader on
 the other. **Select any text on the PDF and the voice reads from there**; the
-sentence being spoken highlights on the page as it goes. Controls: play/pause, skip
-back/forward, stop, slower/faster — plus **Space**, **←**, **→** as keys.
-Skip-forward blows past junk without waiting. The top bar resizes, collapses, or
-stacks the two panes (drag the divider; your layout is remembered). Extraction drops
-page numbers and repeated headers/footers; a page range skips whole sections.
+sentence being spoken highlights on the page and follows along. Controls: play/pause,
+skip back/forward, stop, slower/faster — plus **Space**, **←**, **→** keys.
+Skip-forward blows past junk without waiting. Also in the UI: a **voice picker**
+(50+ Kokoro voices grouped by accent and gender), **per-pane zoom** (PDF and reader
+text), a **Float** button that pops the controls into an always-on-top mini window
+(Document Picture-in-Picture) so you can drive it while reading elsewhere, and a top
+bar to resize / collapse / stack the panes (drag the divider; your layout is
+remembered). Headers, footers, and page numbers are dropped from what's read (by
+page position, so it survives odd layouts); a page range skips whole sections.
 
 Control it from anywhere with **`pdf-ctl play|pause|next|prev|stop|speed 1.2`** (bind
 those to global hotkeys via [RECIPES.md](RECIPES.md) to drive it while another window
 is focused). Needs `./setup-kokoro.sh`. The PDF is rendered by
 [PDF.js](https://github.com/mozilla/pdf.js) (Apache-2.0), vendored under
-`kokoro/weblib/` and served locally, so it stays 100% offline. Scanned image PDFs
-have no text to extract and aren't supported (no OCR).
+`kokoro/weblib/` and served from `127.0.0.1` (Host-checked), so it stays 100%
+offline. Scanned image PDFs have no text to extract and aren't supported (no OCR).
 
 ## Barge-in
 
@@ -243,10 +247,10 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 | `lib/voice-lib.sh` | state files, focus logic, the `voice` helpers |
 | `kokoro/` | the neural-voice daemon and voice auditioner |
 | `bin/kokoro-say` + `setup-kokoro.sh` | optional local neural voice (warm daemon) |
-| `bin/pdf-read` + `bin/pdf-ctl` | read a PDF aloud with a play/pause/skip control bar |
-| `kokoro/reader.py` + `kokoro/pdf_extract.py` | the reader daemon and PDF text cleaner |
+| `bin/pdf-read` + `bin/pdf-ctl` | Spit It Out: read a PDF aloud (split view) + transport CLI |
+| `kokoro/reader.py` + `kokoro/pdf_extract.py` | the reader daemon and PDF text extractor |
 | `kokoro/weblib/` | split-view reader UI + vendored PDF.js (Apache-2.0) |
-| `setup-app.sh` | build a drag-and-drop "Read Aloud" app (no terminal) |
+| `setup-app.sh` + `mac/icon.png` | build the drag-and-drop "Spit It Out" app (no terminal) |
 | `lib/voice-audio.sh` | portable speak/play/stop, detected + overridable |
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |
 | `RECIPES.md` | bind `voice stop` per-terminal or as an OS-global hotkey |

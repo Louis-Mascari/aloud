@@ -109,7 +109,7 @@ class Player:
         self.wake.set()
 
     def stop(self):
-        self._flag(paused=True, cursor=0)
+        self._flag(paused=True)   # halt but keep your place (a reader shouldn't jump to the start)
 
     def seek(self, delta):
         with self.lock:

@@ -180,6 +180,8 @@ stable contract), and audio goes through a detected backend you can override.
 | Voice still robotic | You're on `say`. Run `./setup-kokoro.sh`, then set `VOICE_TTS=kokoro`. |
 | Speaks from the wrong pane | Launch Claude Code inside WezTerm so `$WEZTERM_PANE` reaches the hooks. |
 | Speech won't stop | Send a prompt (barge-in) or run `voice stop`. |
+| Repeated last word, clicks at sentence breaks, or truncated/stuck neural playback | The deployed Kokoro daemon under `~/.claude/voice/kokoro/` is likely stale — a daemon fix can ship in the repo without being installed. Re-run `./setup-kokoro.sh` (redeploys `daemon.py`), then restart the daemon: `pkill -f kokoro/daemon.py` (it auto-respawns on the next spoken line, no state to replay). |
+| Summary spoken as a bare "Done." | The reply omitted its 🔊 line; the Stop hook now re-prompts once and otherwise speaks the message tail. If it persists, confirm `hooks/on-stop.sh` is the installed version. |
 
 ## Configuration
 
@@ -189,6 +191,7 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `config/config.sample
 |-----|------|
 | `VOICE_TTS` | `say` (built-in) or `kokoro` (neural) |
 | `VOICE_KOKORO_VOICE` | Kokoro voice — `voice voices` to audition, `voice use <v>` to set |
+| `VOICE_ENFORCE_MARKER` | `true` (default): a reply missing its 🔊 line is blocked once so it's re-sent with one; `false`: skip the nudge and just speak the message tail |
 | `VOICE_KOKORO_SPEED` | speaking speed, 1.0 = normal — or `voice speed 1.2` |
 | `VOICE_AUTO_SPEAK` | `true` (speak on switch/finish) or `false` (silent; `voice autospeak off`) |
 | `VOICE_PANE_VOICES` | `true` gives each pane its own Kokoro voice, so you can tell concurrent sessions apart by ear (default off) |

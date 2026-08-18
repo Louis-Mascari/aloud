@@ -1,8 +1,10 @@
 <!doctype html><meta charset="utf-8">
 <style>html,body{margin:0;overflow:hidden}#c{width:1024px;height:1024px}</style>
-<!-- Source for mac/icon.png. Render at 1024x1024 (element #c), then setup-app.sh
-     builds the .icns. Geometry follows the macOS app-icon grid: a rounded square
-     inset from the 1024 canvas (so it floats) with a ~22% corner radius. -->
+<!-- Source for mac/icon.png. Geometry follows the macOS app-icon grid: a rounded
+     square inset from the 1024 canvas (so it floats) with a ~22% corner radius.
+     Export mac/icon.png WITH TRANSPARENCY (the corners must be alpha 0, not white)
+     by drawing this <svg> to a canvas and toDataURL('image/png') — a plain page
+     screenshot bakes a white background. setup-app.sh then builds the .icns. -->
 <div id="c">
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
  <defs>

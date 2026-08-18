@@ -22,12 +22,13 @@ on open theItems
 end open
 
 on run
-	set newest to do shell script "ls -t \$HOME/Downloads/*.pdf 2>/dev/null | head -1"
-	if newest is "" then
-		display dialog "No PDF in Downloads. Drop a PDF on this icon, or right-click a PDF ▸ Open With ▸ Spit It Out." buttons {"OK"} default button 1 with title "Spit It Out"
-	else
-		readFile(newest)
-	end if
+	-- launched with no file (Dock/Spotlight): pick one. Cancel just quits.
+	try
+		set theFile to choose file with prompt "Choose a PDF to read aloud" of type {"com.adobe.pdf"}
+	on error number -128
+		return
+	end try
+	readFile(POSIX path of theFile)
 end run
 APPLESCRIPT
 

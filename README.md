@@ -180,8 +180,8 @@ pdf-read ~/Downloads/paper.pdf 3-40     # pages 3–40 (skip cover, TOC, referen
 
 No terminal, no filename: run **`./setup-app.sh`** once to build the **Spit It Out**
 app, drag it to your Dock, then **drop a PDF on it** — or right-click any PDF ▸
-**Open With ▸ Spit It Out**. (Dropped with no file, it reads the newest PDF in
-`~/Downloads`.) The `pdf-read` command above is the same thing from a terminal.
+**Open With ▸ Spit It Out**. (Launched on its own — Dock or Spotlight — it opens
+a file picker.) The `pdf-read` command above is the same thing from a terminal.
 
 A **split view** opens in your browser: the rendered PDF on one side, the reader on
 the other. **Select any text on the PDF and the voice reads from there**; the

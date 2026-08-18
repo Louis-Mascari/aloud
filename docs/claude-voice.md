@@ -56,8 +56,8 @@ see [`architecture.md`](architecture.md).
 | **auto** | heads-down | speaks right away | tab flag + soft ping, speaks when you return |
 | **wait** | meetings / DND | silent | tab flag only, **no sound**; speaks when you ask |
 
-Toggle with **CMD+CTRL+V** (or `bin/voice toggle`). Entering *wait* makes only a
-quiet blip, safe mid-call.
+Toggle with **CMD+CTRL+M** (or `bin/voice toggle`); it says its new state aloud —
+**"Voice off"** entering wait, **"Voice on"** entering auto.
 
 `voice autospeak off` is a separate, persistent setting: summaries stop
 *auto*-playing (you pull them with the keys) but you still get pings. Flip it off
@@ -87,7 +87,7 @@ actions as `voice <command>` (see `voice help`) or bind them yourself.
 | **CMD+SHIFT+R** | replay the last summary from the start (cuts current playback; no old audio continues) |
 | **CMD+SHIFT+J** | jump to the most urgent pane and speak its recap |
 | **CMD+.** | interrupt speech (barge-in) — talk over Claude |
-| **CMD+CTRL+V** | toggle auto ⇄ wait |
+| **CMD+CTRL+M** | toggle auto ⇄ wait |
 | **CMD+SHIFT+/** | quick key/command reference (`voice help` for the full list) |
 | `/voice` (in Claude Code) | push-to-talk dictation |
 
@@ -119,7 +119,7 @@ In a Claude Code pane:
 2. Ask Claude anything. When it finishes, you hear **a short spoken recap** — never the code.
 3. Open a second tab, start something there, switch away. When it finishes, that tab
    shows **✓** and pings. Switch back and it speaks. That's the async loop.
-4. Heading into a meeting? **CMD+CTRL+V** silences everything (tabs still flag quietly). Toggle back after.
+4. Heading into a meeting? **CMD+CTRL+M** silences everything (tabs still flag quietly). Toggle back after.
 
 ## Is it safe for work?
 

@@ -145,11 +145,11 @@ function M.apply(config, voice_bin)
   bind('r', 'CMD|SHIFT', 'recap', true)   -- replay the last summary from the start
   bind('j', 'CMD|SHIFT', 'jump', false)   -- jump to the most urgent pane + read it
   bind('.', 'CMD', 'stop', false)         -- interrupt speech (barge-in)
-  bind('v', 'CMD|CTRL', 'toggle', false)  -- wait mode on/off
+  bind('m', 'CMD|CTRL', 'toggle', false)  -- wait mode on/off
   table.insert(config.keys, { key = '/', mods = 'CMD|SHIFT',
     action = wezterm.action_callback(function(window)
       window:toast_notification('claude-voice',
-        'V drain · R replay · J jump · ⌘. stop · ⌃⌘V mode\nCLI: voice help', nil, 8000)
+        'V drain · R replay · J jump · ⌘. stop · ⌃⌘M mode\nCLI: voice help', nil, 8000)
     end) })
 end
 

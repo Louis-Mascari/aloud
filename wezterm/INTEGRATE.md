@@ -127,7 +127,7 @@ for _, b in ipairs {
   { 'r', 'CMD|SHIFT', 'recap', true },   -- replay the last summary from the start
   { 'j', 'CMD|SHIFT', 'jump', false },   -- jump to the most urgent pane + read it
   { '.', 'CMD', 'stop', false },         -- interrupt speech (barge-in)
-  { 'v', 'CMD|CTRL', 'toggle', false },  -- wait mode on/off
+  { 'm', 'CMD|CTRL', 'toggle', false },  -- wait mode on/off
 } do
   local key, mods, sub, wp = b[1], b[2], b[3], b[4]
   table.insert(config.keys, { key = key, mods = mods,
@@ -139,7 +139,7 @@ end
 -- CMD+SHIFT+/ shows a quick reference (full list: `voice help`)
 table.insert(config.keys, { key = '/', mods = 'CMD|SHIFT',
   action = wezterm.action_callback(function(window)
-    window:toast_notification('claude-voice', 'V drain · R replay · J jump · ⌘. stop · ⌃⌘V mode\nCLI: voice help', nil, 8000)
+    window:toast_notification('claude-voice', 'V drain · R replay · J jump · ⌘. stop · ⌃⌘M mode\nCLI: voice help', nil, 8000)
   end) })
 ```
 

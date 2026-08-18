@@ -225,6 +225,9 @@ $('#prog').onclick=e=>{ const r=e.currentTarget.getBoundingClientRect();
   seekTo(Math.min(sentences.length-1, Math.floor((e.clientX-r.left)/r.width*sentences.length))); };
 async function poll(){ try{ render(await (await fetch('/status')).json()); }catch(e){} }
 setInterval(poll,500);
+// the audio plays in the daemon, not the tab, so pause it when this page is
+// closed/unloaded (sendBeacon still fires during unload). Keeps your place.
+addEventListener('pagehide',()=>{ try{ navigator.sendBeacon('/pause'); }catch(e){} });
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='SELECT'||e.target.tagName==='BUTTON') return;
   if(e.key===' '){e.preventDefault();cmd('toggle');}

@@ -3,37 +3,45 @@
 <title>Spit It Out</title>
 <link rel="icon" href="data:,">
 <style>
-:root{color-scheme:dark;
- --bg:#141418;--panel:#1c1c23;--panel2:#0d0d10;--edge:#2b2b34;--fg:#eaeaf0;
- --dim:#8b8b98;--accent:#3a6df0;--accent2:#4c7bf5;--hl:rgba(90,140,255,.38)}
+:root{color-scheme:light dark;   /* light palette (default) */
+ --bg:#f4f4f7;--panel:#ffffff;--panel2:#e8e8ee;--edge:#d8d8e0;--fg:#1b1b20;--dim:#6b6b78;
+ --btn:#ececf2;--btnh:#dfdfe8;--handle:#b9b9c4;--accent:#3a6df0;--accent2:#4c7bf5;--hl:rgba(90,140,255,.28)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --bg:#141418;--panel:#1c1c23;--panel2:#0d0d10;--edge:#2b2b34;--fg:#eaeaf0;--dim:#8b8b98;
+ --btn:#26262e;--btnh:#33333d;--handle:#4a4a57;--hl:rgba(90,140,255,.38)}}
+:root[data-theme="dark"]{
+ --bg:#141418;--panel:#1c1c23;--panel2:#0d0d10;--edge:#2b2b34;--fg:#eaeaf0;--dim:#8b8b98;
+ --btn:#26262e;--btnh:#33333d;--handle:#4a4a57;--hl:rgba(90,140,255,.38)}
 *{box-sizing:border-box}
 body{margin:0;height:100vh;display:flex;flex-direction:column;
  font:15px/1.5 -apple-system,system-ui,sans-serif;background:var(--bg);color:var(--fg);overflow:hidden}
 #toolbar{display:flex;gap:6px;align-items:center;padding:8px 12px;background:var(--panel);
  border-bottom:1px solid var(--edge);flex:0 0 auto}
 #toolbar .grow{flex:1}
-.tbtn{font-size:13px;background:#26262e;color:var(--fg);border:0;border-radius:8px;padding:7px 11px;cursor:pointer;white-space:nowrap}
-.tbtn:hover{background:#33333d}.tbtn.on{background:var(--accent)}
+.tbtn{font-size:13px;background:var(--btn);color:var(--fg);border:0;border-radius:8px;padding:7px 11px;cursor:pointer;white-space:nowrap}
+.tbtn:hover{background:var(--btnh)}.tbtn.on{background:var(--accent)}
 #hint{font-size:12px;color:var(--dim)}
 #brand{font-weight:700;font-size:14px;letter-spacing:.2px;
  background:linear-gradient(90deg,var(--accent),#8a5bf0);-webkit-background-clip:text;background-clip:text;color:transparent}
 #app{flex:1;display:flex;min-height:0;min-width:0}
 #app.col{flex-direction:column}
+#app.swap{flex-direction:row-reverse}
+#app.col.swap{flex-direction:column-reverse}
 #pdf{background:var(--panel2);flex:1 1 60%;min-height:0;min-width:0;position:relative;display:flex;flex-direction:column;overflow:hidden}
 #pdfScroll{flex:1;min-height:0;overflow:auto;padding:14px;position:relative;scroll-behavior:smooth;
  display:flex;flex-direction:column;align-items:center;gap:14px}
 #read{flex:1 1 40%;min-height:0;min-width:0;display:grid;grid-template-rows:1fr auto;position:relative}
-.paneCtl{position:absolute;z-index:5;display:flex;gap:4px;align-items:center;background:rgba(28,28,35,.92);
+.paneCtl{position:absolute;z-index:5;display:flex;gap:4px;align-items:center;background:var(--panel);
  border:1px solid var(--edge);border-radius:10px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 .paneCtl.br{bottom:14px;right:16px}.paneCtl.tr{top:12px;right:14px}
-.paneCtl button{font-size:13px;background:#2a2a33;color:var(--fg);border:0;border-radius:7px;padding:6px 10px;cursor:pointer;line-height:1}
-.paneCtl button:hover{background:#37374280}
+.paneCtl button{font-size:13px;background:var(--btn);color:var(--fg);border:0;border-radius:7px;padding:6px 10px;cursor:pointer;line-height:1}
+.paneCtl button:hover{background:var(--btnh)}
 #teleWrap{overflow:auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:22px 26px}
 #controls{border-top:1px solid var(--edge);background:var(--panel);padding:14px 18px 16px;
  display:flex;flex-direction:column;align-items:center;gap:10px}
 #divider{flex:0 0 10px;background:var(--edge);cursor:col-resize;position:relative}
 #app.col #divider{cursor:row-resize}
-#divider::after{content:"";position:absolute;inset:0;margin:auto;background:#4a4a57;border-radius:3px}
+#divider::after{content:"";position:absolute;inset:0;margin:auto;background:var(--handle);border-radius:3px}
 #app:not(.col) #divider::after{width:3px;height:34px}
 #app.col #divider::after{height:3px;width:34px}
 #divider:hover{background:var(--accent)}
@@ -51,29 +59,31 @@ body{margin:0;height:100vh;display:flex;flex-direction:column;
 #tele{display:flex;flex-direction:column;gap:8px;align-items:center;max-width:52ch;width:100%}
 .line{text-align:center;cursor:pointer;border-radius:8px;padding:4px 8px;transition:color .2s ease,opacity .2s ease}
 .line.ctx{font-size:calc(15px * var(--read-scale,1));color:var(--dim)}
-.line.ctx:hover{color:var(--fg);background:#20202a}
+.line.ctx:hover{color:var(--fg);background:var(--btnh)}
 .line.cur{font-size:calc(22px * var(--read-scale,1));line-height:1.5;color:var(--fg);cursor:default}
 @keyframes cur-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 #cur.in{animation:cur-in .55s cubic-bezier(.22,.61,.36,1)}
 @media (prefers-reduced-motion:reduce){#cur.in{animation:none}}
 #meta{font-size:12px;color:var(--dim);margin-top:2px}
-#prog{width:min(52ch,100%);height:6px;background:#26262e;border-radius:3px;cursor:pointer;overflow:hidden}
+#prog{width:min(52ch,100%);height:6px;background:var(--btn);border-radius:3px;cursor:pointer;overflow:hidden}
 #prog>div{height:100%;width:0;background:var(--accent);border-radius:3px;transition:width .2s}
 #bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:6px}
-#bar button{font-size:20px;background:#26262e;color:var(--fg);border:0;border-radius:10px;padding:10px 14px;cursor:pointer;line-height:1}
-#bar button:hover{background:#33333d}#bar button:active{transform:translateY(1px)}
+#bar button{font-size:20px;background:var(--btn);color:var(--fg);border:0;border-radius:10px;padding:10px 14px;cursor:pointer;line-height:1}
+#bar button:hover{background:var(--btnh)}#bar button:active{transform:translateY(1px)}
 #play{font-size:24px!important;background:var(--accent)!important}#play:hover{background:var(--accent2)!important}
 .spd{font-size:13px!important;padding:8px 10px!important}
-select#voice{font-size:13px;background:#26262e;color:var(--fg);border:0;border-radius:10px;padding:9px 10px;cursor:pointer;max-width:9rem}
+select#voice{font-size:13px;background:var(--btn);color:var(--fg);border:0;border-radius:10px;padding:9px 10px;cursor:pointer;max-width:9rem}
 </style></head>
 <body>
 <div id="toolbar">
  <span id="brand">Spit&nbsp;It&nbsp;Out</span>
  <span class="sep"></span>
  <button class="tbtn" id="t-orient" title="side-by-side / stacked">◧ Layout</button>
+ <button class="tbtn" id="t-swap" title="swap sides">⇄</button>
  <button class="tbtn" id="t-pdf" title="show / hide PDF">PDF</button>
  <button class="tbtn" id="t-read" title="show / hide reader">Reader</button>
  <button class="tbtn" id="t-pip" title="pop out floating controls (stay on top while you read)">⧉ Float</button>
+ <button class="tbtn" id="t-theme" title="light / dark">☾</button>
  <span class="grow"></span>
  <span id="hint">select text on the PDF to read from there</span>
 </div>
@@ -121,6 +131,22 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/lib/pdf.worker.mjs';
 const $ = s => document.querySelector(s);
 const app=$('#app'), pdfWrap=$('#pdf'), pdfPane=$('#pdfScroll'), readPane=$('#read'), divider=$('#divider');
 
+/* ---------- theme: follow OS by default, toggle overrides (persisted) ---------- */
+const THEME='pdfreader.theme';
+const curTheme=()=>document.documentElement.getAttribute('data-theme')
+  || (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+function setTheme(t){
+  if(t) document.documentElement.setAttribute('data-theme',t);
+  else document.documentElement.removeAttribute('data-theme');
+  localStorage.setItem(THEME,t||'auto');
+  $('#t-theme').textContent = curTheme()==='dark' ? '☀' : '☾';   // shows what a click switches TO
+}
+$('#t-theme').onclick=()=>setTheme(curTheme()==='dark'?'light':'dark');
+(function(){ const s=localStorage.getItem(THEME);
+  setTheme(s&&s!=='auto'?s:null); })();
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
+  if((localStorage.getItem(THEME)||'auto')==='auto') setTheme(null); });
+
 /* ---------- normalization (shared by highlight + select-to-read) ---------- */
 const PUA={'\uF000':'ff','\uF001':'fi','\uF002':'fl','\uF003':'ffi','\uF004':'ffl'};
 function normStr(s){
@@ -154,8 +180,8 @@ async function popOut(){
     #pcur{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;text-align:center;font-size:15px}
     #pmeta{text-align:center;font-size:12px;color:#8b8b98}
     #prow{display:flex;gap:8px;justify-content:center}
-    button{font-size:18px;background:#26262e;color:#eaeaf0;border:0;border-radius:9px;padding:9px 13px;cursor:pointer;line-height:1}
-    button:hover{background:#33333d}#pplay{background:#3a6df0}`;
+    button{font-size:18px;background:var(--btn);color:#eaeaf0;border:0;border-radius:9px;padding:9px 13px;cursor:pointer;line-height:1}
+    button:hover{background:var(--btnh)}#pplay{background:#3a6df0}`;
   d.head.appendChild(st);
   d.body.innerHTML=`<div id="pcur">…</div><div id="pmeta"></div>
     <div id="prow"><button id="pprev" title="back">⏮</button><button id="pplay" title="play/pause">▶</button>
@@ -211,11 +237,13 @@ document.addEventListener('keydown',e=>{
 
 /* ---------- layout + zoom (persisted) ---------- */
 const LS='pdfreader.layout';
-let layout=Object.assign({orient:'row',split:60,show:'both',readScale:1},JSON.parse(localStorage.getItem(LS)||'{}'));
+let layout=Object.assign({orient:'row',split:60,show:'both',readScale:1,swap:false},JSON.parse(localStorage.getItem(LS)||'{}'));
 function saveLayout(){ localStorage.setItem(LS,JSON.stringify(layout)); }
 function applyLayout(){
   app.classList.toggle('col',layout.orient==='col');
+  app.classList.toggle('swap',!!layout.swap);
   $('#t-orient').textContent=(layout.orient==='row'?'◧':'⬓')+' Layout';
+  $('#t-swap').classList.toggle('on',!!layout.swap);
   const showPdf=layout.show!=='read', showRead=layout.show!=='pdf';
   pdfWrap.classList.toggle('hidden',!showPdf);
   readPane.classList.toggle('hidden',!showRead);
@@ -228,6 +256,7 @@ function applyLayout(){
   saveLayout();
 }
 $('#t-orient').onclick=()=>{layout.orient=layout.orient==='row'?'col':'row';applyLayout();};
+$('#t-swap').onclick=()=>{layout.swap=!layout.swap;applyLayout();};
 $('#t-pdf').onclick=()=>{layout.show=(layout.show==='read')?'both':'read';applyLayout();};
 $('#t-read').onclick=()=>{layout.show=(layout.show==='pdf')?'both':'pdf';applyLayout();};
 $('#t-pip').onclick=popOut;
@@ -236,7 +265,8 @@ window.zoomText=d=>{ layout.readScale=Math.max(0.7,Math.min(2.4,Math.round((layo
 divider.addEventListener('pointerdown',e=>{
   divider.setPointerCapture(e.pointerId);
   const move=ev=>{ const r=app.getBoundingClientRect();
-    const pct=layout.orient==='col'?(ev.clientY-r.top)/r.height*100:(ev.clientX-r.left)/r.width*100;
+    let pct=layout.orient==='col'?(ev.clientY-r.top)/r.height*100:(ev.clientX-r.left)/r.width*100;
+    if(layout.swap) pct=100-pct;   // reversed flex direction flips the drag axis
     layout.split=Math.max(15,Math.min(85,pct)); pdfWrap.style.flex=`0 0 ${layout.split}%`; };
   const up=()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); saveLayout(); };
   document.addEventListener('pointermove',move); document.addEventListener('pointerup',up);
@@ -295,9 +325,9 @@ function renderPage(rec){
   })();
   return rec.p;
 }
-function freePage(rec){
+function freePage(rec, force){
   if(!rec.p) return;
-  if(rec.n===pageOf[lastIndex]) return;   // keep the page the current sentence is highlighted on
+  if(!force && rec.n===pageOf[lastIndex]) return;   // scroll path keeps the highlighted page; zoom forces
   rec.token=null;                                // stop any in-flight render from redrawing
   if(rec.task){ try{ rec.task.cancel(); }catch(e){} rec.task=null; }
   rec.p=null; rec.ready=false;
@@ -345,7 +375,7 @@ function applyScale(){ fit=baseFit*pdfZoom;
   for(const rec of recs){                       // resize placeholders; re-render live ones
     rec.holder.style.width=(baseVp.width*fit)+'px'; rec.holder.style.height=(baseVp.height*fit)+'px';
     rec.holder.style.setProperty('--scale-factor',fit);
-    if(rec.p){ freePage(rec); renderPage(rec); } }
+    if(rec.p){ freePage(rec,true); renderPage(rec); } }   // force: re-render at the new scale
   scheduleVisible(); }
 window.zoomPdf=f=>{ pdfZoom=Math.max(0.4,Math.min(4,pdfZoom*f)); applyScale(); };
 function refit(){ if(!pdfDoc) return;

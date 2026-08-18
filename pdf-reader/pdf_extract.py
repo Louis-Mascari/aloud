@@ -147,14 +147,44 @@ def _cap(s):
 _BAND_LO, _BAND_HI = 0.05, 0.97
 
 
-def _page_body_text(page):
-    """Text with the header/footer band dropped, in pypdf's reading order.
+def _single_column(frags, pw):
+    """True if no text line has fragments in both the left and right halves.
 
-    Keep pypdf's own text ordering (it handles multi-column layouts far better
-    than a naive y-sort, which interleaves columns) and use the visitor only to
-    drop glyphs whose true device y is in the header/footer band. Composing the
-    text matrix with the CTM gives the real y even when the page positions content
-    through a cm/XObject transform; tm[5]==0 stays pypdf's newline sentinel.
+    A two-column layout has side-by-side text at the same y; single-column prose
+    never does. pypdf's own order isn't reliably top-to-bottom, so single-column
+    pages are re-ordered by position (fixes a top block emitted late), while
+    multi-column pages keep pypdf's order (a naive y-sort interleaves columns).
+    """
+    from collections import defaultdict
+    lines = defaultdict(list)
+    for x, y, _ in frags:
+        lines[round(y / 6)].append(x)
+    L, R = pw * 0.45, pw * 0.55
+    return not any(any(x < L for x in xs) and any(x > R for x in xs) for xs in lines.values())
+
+
+def _lines_by_y(frags):
+    """Group position-ordered fragments into lines by y proximity; join each L→R."""
+    out, cur, cy = [], [], None
+    for x, y, t in frags:
+        if cy is not None and abs(y - cy) <= 6:
+            cur.append((x, t))
+        else:
+            if cur:
+                out.append(cur)
+            cur, cy = [(x, t)], y
+    if cur:
+        out.append(cur)
+    return "\n".join("".join(t for _, t in sorted(l)) for l in out)
+
+
+def _page_body_text(page):
+    """Body text with the header/footer band dropped, in correct reading order.
+
+    Collect in-band fragments with position (device x/y composed through the CTM,
+    so it's right even under a cm/XObject transform). Single-column pages are
+    sorted top-to-bottom; multi-column pages keep pypdf's order (de-glued on
+    >1-line y jumps) so columns aren't interleaved.
     """
     try:
         rot = int(getattr(page, "rotation", 0) or 0) % 360
@@ -164,35 +194,37 @@ def _page_body_text(page):
         return page.extract_text() or ""     # y-band is meaningless on a rotated page
     try:
         h = float(page.mediabox.height)
+        pw = float(page.mediabox.width)
     except Exception:
-        h = 792.0
+        h, pw = 792.0, 612.0
     lo, hi = h * _BAND_LO, h * _BAND_HI
-    parts = []
-    prev_y = [None]
+    frags = []   # (x, y, text) in pypdf visitor order
 
     def visit(text, cm, tm, font, size):
-        if "\n" in text:                     # a real line break emitted by pypdf
-            parts.append(text)
-            prev_y[0] = None
-            return
-        if tm[5] == 0:                        # positioning marker, no glyphs — ignore
+        if not text.strip():
             return
         y = tm[4] * cm[1] + tm[5] * cm[3] + cm[5]
-        if not (lo < y < hi):
-            return                           # header/footer band
-        # Insert a break when the baseline jumps more than a line: pypdf sometimes
-        # keeps a footer/header label on the same output line as body ("Page" glued
-        # to prose). Splitting on the y-jump de-glues it into its own line (which
-        # the repeated-line/label filters then remove) without reordering columns.
-        if prev_y[0] is not None and abs(prev_y[0] - y) > 8:
-            parts.append("\n")
-        parts.append(text)
-        prev_y[0] = y
+        x = tm[4] * cm[0] + tm[5] * cm[2] + cm[4]
+        if lo < y < hi:
+            frags.append((x, y, text))
 
     try:
         page.extract_text(visitor_text=visit)
     except Exception:
         return page.extract_text() or ""     # visitor unsupported: fall back to plain
+    if not frags:
+        return ""
+
+    if _single_column(frags, pw):
+        frags.sort(key=lambda f: (-f[1], f[0]))   # top-to-bottom, then left-to-right
+        return _lines_by_y(frags)
+    # multi-column: keep pypdf order, split lines on a >1-line y jump (de-glue)
+    parts, prev_y = [], None
+    for x, y, t in frags:
+        if prev_y is not None and abs(prev_y - y) > 8:
+            parts.append("\n")
+        parts.append(t)
+        prev_y = y
     return "".join(parts)
 
 

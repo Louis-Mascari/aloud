@@ -11,7 +11,8 @@
 
 PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 VOICE_DIR="${VOICE_DIR:-$HOME/.claude/voice}"
-STATE_DIR="$VOICE_DIR/state"; TASK_DIR="$VOICE_DIR/task"; PANEVOICE_DIR="$VOICE_DIR/panevoice"
+STATE_DIR="$VOICE_DIR/state"; TASK_DIR="$VOICE_DIR/task"
+PANEVOICE_DIR="$VOICE_DIR/panevoice"; LAST_DIR="$VOICE_DIR/last"
 # Resolve the repo's bin/voice from this script's own (symlink-aware) location, so
 # the plugin works wherever the repo lives. Override with VOICE_BIN if needed.
 SELF="${BASH_SOURCE[0]}"; [ -L "$SELF" ] && SELF="$(readlink "$SELF")"
@@ -24,6 +25,7 @@ _meta() { case "$1" in
   ready)   echo "✓|finished|#76946a";;
   input)   echo "⏸|needs you|#e6c384";;
   error)   echo "✗|error|#c34043";;
+  ''|idle) echo "·|idle|#888888";;
   *)       echo "·|$1|#888888";;
 esac; }
 
@@ -47,11 +49,13 @@ render() {
   fi
   echo "---"
 
-  local any=0 f p st task g label color
-  for f in "$STATE_DIR"/*; do
-    [ -e "$f" ] || continue
-    p="${f##*/}"; case "$p" in *[!0-9]*) continue;; esac   # numeric pane ids only
-    st="$(cat "$f" 2>/dev/null)"
+  # List every live session, not just ones with a current state glyph: a pane's
+  # state is cleared once you look at it, but its last summary/task persist, so
+  # key on the union of state + last so finished-but-idle tabs still show.
+  local any=0 p st task g label color ids
+  ids="$( { for f in "$STATE_DIR"/* "$LAST_DIR"/*; do [ -e "$f" ] && printf '%s\n' "${f##*/}"; done; } | grep -E '^[0-9]+$' | sort -un )"
+  for p in $ids; do
+    st="$(cat "$STATE_DIR/$p" 2>/dev/null)"
     task="$(cat "$TASK_DIR/$p" 2>/dev/null | tr '|\n' '  ')"; [ -n "$task" ] || task="pane $p"
     # Trim to a word boundary with an ellipsis so the row doesn't end mid-word.
     [ "${#task}" -gt 40 ] && { task="${task:0:40}"; task="${task% *}…"; }
@@ -78,14 +82,18 @@ render() {
   echo "Refresh | refresh=true"
 }
 
-# selftest: a temp state dir with one input pane must render that pane + its actions.
+# selftest: an active pane and an idle pane (last summary but no current state)
+# must both render with their actions.
 if [ "${1:-}" = selftest ]; then
-  d="$(mktemp -d)"; VOICE_DIR="$d"; STATE_DIR="$d/state"; TASK_DIR="$d/task"
-  VOICE_BIN="/usr/bin/true"; mkdir -p "$STATE_DIR" "$TASK_DIR"
+  d="$(mktemp -d)"; VOICE_DIR="$d"; STATE_DIR="$d/state"; TASK_DIR="$d/task"; LAST_DIR="$d/last"
+  VOICE_BIN="/usr/bin/true"; mkdir -p "$STATE_DIR" "$TASK_DIR" "$LAST_DIR"
   printf input > "$STATE_DIR/42"; printf 'fix the parser' > "$TASK_DIR/42"; echo wait > "$d/mode"
+  printf 'earlier summary' > "$LAST_DIR/7"; printf 'other tab' > "$TASK_DIR/7"   # idle: no state file
   out="$(render)"
   echo "$out" | grep -q '^🔇' || { echo "FAIL: wait mode not muted glyph"; exit 1; }
   echo "$out" | grep -q '42 · fix the parser' || { echo "FAIL: pane row missing"; exit 1; }
+  echo "$out" | grep -q '7 · other tab' || { echo "FAIL: idle pane row missing"; exit 1; }
+  echo "$out" | grep -q 'param0=recap param1=7' || { echo "FAIL: idle pane replay action missing"; exit 1; }
   echo "$out" | grep -q 'param0=drain param1=42' || { echo "FAIL: play action missing"; exit 1; }
   rm -rf "$d"; echo "ok"; exit 0
 fi

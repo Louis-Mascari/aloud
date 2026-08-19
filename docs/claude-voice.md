@@ -65,9 +65,6 @@ right before you dictate so it won't talk over you; wait mode silences everythin
 
 ## States at a glance
 
-<img src="media/wezterm-tabs.svg" alt="WezTerm tab bar: an active plain tab plus amber waiting, green done, and red error tabs, with a left-side badge counting the tabs that need action." width="640">
-<br><sub>Illustration.</sub>
-
 Each **inactive** tab shows one colored glyph (the active tab you can already see):
 
 | Glyph | Color | State | Needs you |
@@ -101,9 +98,6 @@ the same transport in your menu bar: each live session is a row with its state
 glyph and **Play pending**, **Replay**, and a per-pane **🎙 Voice** submenu, plus
 **Stop**, **Jump to urgent**, a **Mute** (wait-mode) toggle, and **Speed**. It reads
 the same state files and shells out to `voice`, so there's nothing new to maintain.
-
-<img src="media/menubar-player.svg" alt="Menu-bar dropdown listing each session with a colored state glyph and Play, Replay, and per-pane Voice controls." width="380">
-<br><sub>Illustration.</sub>
 
 ```bash
 brew install --cask swiftbar          # then pick a plugins folder on first launch

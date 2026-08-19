@@ -15,18 +15,12 @@ highlight and follow along, and drive it with transport controls, 50+ voices,
 light/dark, per-pane zoom, and an always-on-top mini player. Ships as a
 drag-and-drop **macOS app**. 100% offline.
 
-<img src="docs/media/pdf-readalong.svg" alt="Read-along reader: the PDF page beside a teleprompter with the spoken sentence highlighted, and a voice picker showing quality grades." width="680">
-<br><sub>Illustration.</sub>
-
 ### 🔊 claude-voice — hear Claude Code → [docs/claude-voice.md](docs/claude-voice.md)
 
 Claude Code speaks a short recap each turn instead of you reading walls of
 terminal output; background tabs flag when they need you, and one toggle silences
 everything for meetings. A menu-bar player and per-tab glyphs give you GUI
 controls. Built for WezTerm — the voice half works on any terminal.
-
-<img src="docs/media/menubar-player.svg" alt="Menu-bar dropdown listing each session with a colored state glyph and Play, Replay, and per-pane Voice controls." width="380">
-<br><sub>Illustration.</sub>
 
 ## Setup
 

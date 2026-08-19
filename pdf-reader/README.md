@@ -8,9 +8,6 @@ other — with the spoken sentence highlighted and following along.
 Part of the [aloud](../README.md) collection; shares the Kokoro engine in
 [`../kokoro/`](../kokoro). Run [`../setup-kokoro.sh`](../setup-kokoro.sh) once first.
 
-<img src="../docs/media/pdf-readalong.svg" alt="Read-along reader: the PDF page beside a teleprompter with the spoken sentence highlighted, and a voice picker showing quality grades." width="680">
-<br><sub>Illustration.</sub>
-
 ## The app (no terminal)
 
 Build the **Spit It Out** desktop app once, then never touch the terminal:

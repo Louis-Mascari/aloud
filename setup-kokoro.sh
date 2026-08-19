@@ -24,13 +24,23 @@ base="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-
 [ -f kokoro-v1.0.onnx ] || curl -fL --retry 3 -o kokoro-v1.0.onnx "$base/kokoro-v1.0.onnx"
 [ -f voices-v1.0.bin ]  || curl -fL --retry 3 -o voices-v1.0.bin  "$base/voices-v1.0.bin"
 
-cp "$REPO/kokoro/daemon.py" "$K/daemon.py"
-cp "$REPO/kokoro/demo-voices.py" "$K/demo-voices.py"
+# Symlink the source (not copy) so an edit in the repo is live immediately: the
+# repo is the single source of truth, no second copy to drift. The venv and
+# model weights above stay as real files here. Requires the repo to keep its
+# path; if you move it, re-run this.
+ln -sfn "$REPO/kokoro/daemon.py"           "$K/daemon.py"
+ln -sfn "$REPO/kokoro/demo-voices.py"      "$K/demo-voices.py"
 # Spit It Out (PDF reader) shares this Kokoro runtime: its code lives in
-# pdf-reader/ but deploys here alongside the model weights and venv.
-cp "$REPO/pdf-reader/reader.py" "$K/reader.py"
-cp "$REPO/pdf-reader/pdf_extract.py" "$K/pdf_extract.py"
-mkdir -p "$K/weblib"; cp "$REPO"/pdf-reader/weblib/* "$K/weblib/"
+# pdf-reader/ but links in here alongside the model weights and venv.
+ln -sfn "$REPO/pdf-reader/reader.py"       "$K/reader.py"
+ln -sfn "$REPO/pdf-reader/pdf_extract.py"  "$K/pdf_extract.py"
+rm -rf "$K/weblib"; ln -sfn "$REPO/pdf-reader/weblib" "$K/weblib"
+
+# New code is in place; a long-running daemon holds the OLD code in memory
+# (Python imports once at startup), so stop both so the next use loads the new
+# code fresh. pdf-read relaunches reader.py; the voice hook relaunches daemon.py.
+pkill -f "$K/reader.py" 2>/dev/null || true
+pkill -f "$K/daemon.py" 2>/dev/null || true
 
 echo
 echo "Kokoro ready. Enable it in ~/.claude/voice/config.sh:"

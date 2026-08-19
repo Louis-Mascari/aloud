@@ -129,10 +129,24 @@ Voice & speed:
   voice pool on|off|<names…>   per-pane voices: a distinct voice per session
   voice panevoice <pane> <v>   set one pane's voice (also in the menu-bar player)
 
+Maintenance:
+  voice restart                reload the voice engine after editing its code
+
   Cmd+Shift+/  this menu        config: ~/.claude/voice/config.sh
 H
     ;;
   stop|shush) voice_stop; exit 0 ;;
+
+  # restart — stop the Kokoro daemons so the next use reloads edited code. A
+  # long-running daemon imports its modules once at startup and holds the old
+  # code in memory, so an edit to reader.py/daemon.py/pdf_extract.py isn't picked
+  # up until the process is bounced. They respawn on demand (kokoro-say restarts
+  # daemon.py; pdf-read restarts reader.py) — no state to replay.
+  restart)
+    pkill -f "$KOKORO_DIR/reader.py" 2>/dev/null || true
+    pkill -f "$KOKORO_DIR/daemon.py" 2>/dev/null || true
+    echo "kokoro daemons stopped; they reload edited code on next use"
+    ;;
 
   # drain [pane] — speak this pane's queued summary, else recap it. Distinct claim
   # file so it never contends with the refocus poll's rename.
@@ -198,5 +212,5 @@ H
     [ "$e" -gt 0 ] && _a "✗$e"; [ "$i" -gt 0 ] && _a "⏸$i"; [ "$r" -gt 0 ] && _a "✓$r"
     printf '%s\n' "$out" ;;
 
-  *) echo "usage: voice {help|voices|use|panevoice|speed|pool|autospeak|auto|wait|toggle|status|stop|drain|recap|jump|attention}"; exit 2 ;;
+  *) echo "usage: voice {help|voices|use|panevoice|speed|pool|autospeak|auto|wait|toggle|status|stop|restart|drain|recap|jump|attention}"; exit 2 ;;
 esac

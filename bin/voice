@@ -39,9 +39,11 @@ _cfg_set() {
 
 case "${1:-status}" in
   auto)   echo auto > "$MODE_FILE"; echo "voice: auto — speaks in the focused pane" ;;
-  wait)   echo wait > "$MODE_FILE"; echo "voice: wait — silent; press the drain key to hear a pane" ;;
+  wait)   voice_stop; echo wait > "$MODE_FILE"; echo "voice: wait — silent; press the drain key to hear a pane" ;;
   toggle)
-    if [ "$(voice_mode)" = auto ]; then echo wait > "$MODE_FILE"; voice_say "Voice off"
+    # Entering wait cuts any current playback immediately — muting shouldn't wait
+    # for the sentence in flight to finish.
+    if [ "$(voice_mode)" = auto ]; then voice_stop; echo wait > "$MODE_FILE"; voice_say "Voice off"
     else echo auto > "$MODE_FILE"; voice_say "Voice on"; fi ;;
   status) echo "voice mode: $(voice_mode)  |  kokoro voice: $VOICE_KOKORO_VOICE" ;;
 
@@ -105,6 +107,7 @@ case "${1:-status}" in
     [ -n "$p" ] && [ -n "$v" ] || { echo "usage: voice panevoice <pane> <voice>"; exit 2; }
     mkdir -p "$PANEVOICE_DIR"; printf '%s' "$v" > "$PANEVOICE_DIR/$p"
     echo "pane $p voice -> $v"
+    voice_stop     # cut speech in the old voice so the change is immediate
     [ -x "$KOKORO_SAY" ] && "$KOKORO_SAY" "This is your new voice." "$v" "$VOICE_KOKORO_SPEED" ;;
 
   # help — one-screen cheatsheet.

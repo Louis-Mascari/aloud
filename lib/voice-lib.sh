@@ -53,13 +53,15 @@ voice_ping()     { voice_play "$1"; }
 # holds, so concurrent sessions stay distinct until the pool is exhausted.
 voice_pane_voice() {
   case "$1" in ''|*[!0-9]*) printf '%s' "$VOICE_KOKORO_VOICE"; return;; esac
+  mkdir -p "$PANEVOICE_DIR"
+  local f="$PANEVOICE_DIR/$1" v
+  # An explicit assignment (manual pick in the menu-bar Voice submenu, or a prior
+  # auto-pool draw) always wins, whether or not the auto-pool feature is on.
+  v="$(cat "$f" 2>/dev/null)"; [ -n "$v" ] && { printf '%s' "$v"; return; }
   [ "$VOICE_PANE_VOICES" = true ] || { printf '%s' "$VOICE_KOKORO_VOICE"; return; }
   local -a pool; read -r -a pool <<<"$VOICE_PANE_VOICE_POOL"
   local n=${#pool[@]}
   [ "$n" -gt 0 ] || { printf '%s' "$VOICE_KOKORO_VOICE"; return; }
-  mkdir -p "$PANEVOICE_DIR"
-  local f="$PANEVOICE_DIR/$1" v
-  v="$(cat "$f" 2>/dev/null)"; [ -n "$v" ] && { printf '%s' "$v"; return; }
   local used=" " g id
   for g in "$PANEVOICE_DIR"/*; do
     [ -e "$g" ] || continue; id="${g##*/}"; [ "$id" = "$1" ] && continue

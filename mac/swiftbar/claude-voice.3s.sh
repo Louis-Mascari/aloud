@@ -11,7 +11,7 @@
 
 PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 VOICE_DIR="${VOICE_DIR:-$HOME/.claude/voice}"
-STATE_DIR="$VOICE_DIR/state"; TASK_DIR="$VOICE_DIR/task"
+STATE_DIR="$VOICE_DIR/state"; TASK_DIR="$VOICE_DIR/task"; PANEVOICE_DIR="$VOICE_DIR/panevoice"
 # Resolve the repo's bin/voice from this script's own (symlink-aware) location, so
 # the plugin works wherever the repo lives. Override with VOICE_BIN if needed.
 SELF="${BASH_SOURCE[0]}"; [ -L "$SELF" ] && SELF="$(readlink "$SELF")"
@@ -52,15 +52,18 @@ render() {
     [ -e "$f" ] || continue
     p="${f##*/}"; case "$p" in *[!0-9]*) continue;; esac   # numeric pane ids only
     st="$(cat "$f" 2>/dev/null)"
-    task="$(cat "$TASK_DIR/$p" 2>/dev/null | tr '|\n' '  ' | cut -c1-44)"; [ -n "$task" ] || task="pane $p"
+    task="$(cat "$TASK_DIR/$p" 2>/dev/null | tr '|\n' '  ')"; [ -n "$task" ] || task="pane $p"
+    # Trim to a word boundary with an ellipsis so the row doesn't end mid-word.
+    [ "${#task}" -gt 40 ] && { task="${task:0:40}"; task="${task% *}…"; }
     IFS='|' read -r g label color <<<"$(_meta "$st")"
     echo "$g $p · $task | color=$color"
     echo "-- ▶ Play pending | bash=\"$VOICE_BIN\" param0=drain param1=$p terminal=false refresh=true"
     echo "-- ↺ Replay last | bash=\"$VOICE_BIN\" param0=recap param1=$p terminal=false refresh=true"
     echo "-- 🎙 Voice"
-    local vg
+    local vg cur; cur="$(cat "$PANEVOICE_DIR/$p" 2>/dev/null)"
     for vg in "af_heart:Heart · A" "af_bella:Bella · A-" "bf_emma:Emma · B-" "am_michael:Michael · C+" "am_puck:Puck · C+"; do
-      echo "---- ${vg#*:} | bash=\"$VOICE_BIN\" param0=panevoice param1=$p param2=${vg%%:*} terminal=false refresh=true"
+      mark=""; [ "${vg%%:*}" = "$cur" ] && mark="✓ "   # the pane's current voice
+      echo "---- ${mark}${vg#*:} | bash=\"$VOICE_BIN\" param0=panevoice param1=$p param2=${vg%%:*} terminal=false refresh=true"
     done
     any=1
   done

@@ -175,7 +175,10 @@ def _lines_by_y(frags):
             cur, cy = [(x, t)], y
     if cur:
         out.append(cur)
-    return "\n".join("".join(t for _, t in sorted(l)) for l in out)
+    # Space-join fragments: pypdf's visitor emits one fragment per word with no
+    # separator (Google Docs and many exporters lay out word-by-word), so a raw
+    # "".join glues them. _norm later collapses any doubled spaces.
+    return "\n".join(" ".join(t for _, t in sorted(l)) for l in out)
 
 
 def _page_body_text(page):
@@ -222,8 +225,11 @@ def _page_body_text(page):
     parts, prev_y = [], None
     for x, y, t in frags:
         if prev_y is not None and abs(prev_y - y) > 8:
-            parts.append("\n")
-        parts.append(t)
+            parts.append("\n" + t)      # new line
+        elif parts:
+            parts.append(" " + t)       # same line: space between word fragments
+        else:
+            parts.append(t)
         prev_y = y
     return "".join(parts)
 
@@ -297,6 +303,11 @@ def _selftest():
     # PUA ligatures expand; stray private-use glyphs become spaces; \n preserved
     assert _clean_glyphs("The \uF001rst \uF002ow") == "The first flow"
     assert _clean_glyphs("ab\nc") == "a b\nc"
+
+    # word-granular fragments (visitor emits one word each, no separator) get
+    # space-joined per line, not glued
+    frags = [(0, 100, "Data"), (25, 100, "integrity"), (0, 80, "A"), (10, 80, "foundation")]
+    assert _lines_by_y(frags) == "Data integrity\nA foundation", _lines_by_y(frags)
 
     # wrapped prose merges; headings / rows stay their own unit
     merged = _merge_wrapped([

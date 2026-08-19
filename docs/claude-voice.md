@@ -65,6 +65,9 @@ right before you dictate so it won't talk over you; wait mode silences everythin
 
 ## States at a glance
 
+<img src="media/wezterm-tabs.svg" alt="WezTerm tab bar: an active plain tab plus amber waiting, green done, and red error tabs, with a left-side badge counting the tabs that need action." width="640">
+<br><sub>Illustration.</sub>
+
 Each **inactive** tab shows one colored glyph (the active tab you can already see):
 
 | Glyph | Color | State | Needs you |
@@ -74,7 +77,7 @@ Each **inactive** tab shows one colored glyph (the active tab you can already se
 | ⏸ | amber | waiting on input | yes |
 | ✗ | red | error | yes, now |
 
-A `✓` clears once you switch to a tab (seen); a `⏸` clears when Claude resumes work (you approved the prompt) or the turn ends. The status bar aggregates only what needs an action, e.g. `✗1 ⏸2`, so a non-empty badge always means "act now" — and it counts only live panes, so a closed session can't leave a phantom in the count.
+A `✓` clears once you switch to a tab (seen); a `⏸` clears the moment you answer an elicitation prompt, when Claude resumes work after a permission approval, or when the turn ends. The status bar aggregates only what needs an action, e.g. `✗1 ⏸2`, so a non-empty badge always means "act now" — and it counts only live panes, so a closed session can't leave a phantom in the count.
 
 ## Keys
 
@@ -90,6 +93,41 @@ actions as `voice <command>` (see `voice help`) or bind them yourself.
 | **CMD+CTRL+M** | toggle auto ⇄ wait |
 | **CMD+SHIFT+/** | quick key/command reference (`voice help` for the full list) |
 | `/voice` (in Claude Code) | push-to-talk dictation |
+
+## Menu-bar player (SwiftBar)
+
+Prefer clickable controls to keys? A [SwiftBar](https://swiftbar.app) plugin puts
+the same transport in your menu bar: each live session is a row with its state
+glyph and **Play pending**, **Replay**, and a per-pane **🎙 Voice** submenu, plus
+**Stop**, **Jump to urgent**, a **Mute** (wait-mode) toggle, and **Speed**. It reads
+the same state files and shells out to `voice`, so there's nothing new to maintain.
+
+<img src="media/menubar-player.svg" alt="Menu-bar dropdown listing each session with a colored state glyph and Play, Replay, and per-pane Voice controls." width="380">
+<br><sub>Illustration.</sub>
+
+```bash
+brew install --cask swiftbar          # then pick a plugins folder on first launch
+ln -s ~/aloud/mac/swiftbar/claude-voice.3s.sh \
+      ~/Library/Application\ Support/SwiftBar/Plugins/
+```
+
+The icon shows a speaker plus a count of sessions in an actionable state — `✗` errored, `⏸` waiting on you, `✓` finished (e.g. `✗1 ⏸1 ✓2`).
+
+**Can't see the icon?** Two macOS behaviors, not bugs:
+
+- **Multiple monitors** — macOS shows menu-bar icons **only on the main display**.
+  If you work on a second monitor, the icon is on the *other* screen. Move it by
+  making your working screen the main display: System Settings ▸ Displays ▸ drag
+  the white menu-bar strip onto that screen.
+- **The notch** (built-in display) — with many menu-bar icons, some hide behind the
+  camera cutout at the top center.
+
+Both are macOS, not this tool, and both are optional to solve. If they bug you:
+a menu-bar manager like [Ice](https://icemenubar.app)
+(`brew install --cask jordanbaird-ice`) keeps chosen icons visible, and a global
+mute key that works from any app (handy right before a meeting) is a one-line
+[RECIPES](../RECIPES.md) binding (skhd / Hammerspoon). Both are nice-to-haves, not
+requirements — the only thing the menu-bar player needs is SwiftBar.
 
 ## Install (macOS)
 
@@ -150,6 +188,11 @@ Audition every Kokoro voice with **`voice voices`** — **space** next, **p** ba
 quit — or narrow to a group (`voice voices af` / `am` / `bf` / `bm`). Lock one in
 with **`voice use bf_emma`**. If Kokoro isn't set up, it falls back to `say`.
 
+With `VOICE_PANE_VOICES=true`, each pane draws a distinct voice from a curated
+pool of clear, natural, easy-to-tell-apart voices (so concurrent sessions sound
+different). Change any single pane's voice from the menu-bar player's **🎙 Voice**
+submenu, or with `voice panevoice <pane> <voice>` — no global change, no new shell.
+
 ## Barge-in
 
 Speech stops automatically when you **send a prompt** or **switch to another pane**
@@ -196,6 +239,7 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `../config/config.sam
 | `VOICE_KOKORO_SPEED` | speaking speed, 1.0 = normal — or `voice speed 1.2` |
 | `VOICE_AUTO_SPEAK` | `true` (speak on switch/finish) or `false` (silent; `voice autospeak off`) |
 | `VOICE_PANE_VOICES` | `true` gives each pane its own Kokoro voice, so you can tell concurrent sessions apart by ear (default off) |
+| `VOICE_PANE_VOICE_POOL` | the voices per-pane assignment draws from — a clear, natural, distinguishable default set; curate with `voice pool` |
 | `VOICE_SAY_VOICE` / `VOICE_SAY_RATE` | macOS `say` voice + words/min |
 | `VOICE_SPEAK_CMD` / `VOICE_PLAY_CMD` | force the audio backend (Linux/Windows) |
 | `VOICE_SOUND_*` | cue sounds (path, or `""` to silence one) |
@@ -216,6 +260,7 @@ All overrides live in `~/.claude/voice/config.sh` (copy of `../config/config.sam
 | `config/config.sample.sh` | voice, rate, backend, and cue-sound overrides |
 | `wezterm/INTEGRATE.md` | 4 edits for an existing `wezterm.lua` |
 | `wezterm/voice.lua` | drop-in module for a fresh `wezterm.lua` |
+| `mac/swiftbar/claude-voice.3s.sh` | menu-bar player plugin (SwiftBar) |
 | `config/CLAUDE.snippet.md` | the 🔊 rule the installer appends |
 | `test/test-audio.sh` | portability self-check (fake backend, no speaker needed) |
 

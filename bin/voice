@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # voice — control and query claude-voice. Used by you, by the WezTerm keys, and by
 # the update-status poll (refocus).
+# GUI launchers (SwiftBar, macOS Shortcuts) start with a minimal PATH; make sure
+# Homebrew bins like wezterm are found so `jump`/`switched` can focus a pane.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; . "$HERE/../lib/voice-lib.sh"
 voice_init
 
@@ -95,6 +98,15 @@ case "${1:-status}" in
            echo "per-pane voices: on  |  pool: $*" ;;
     esac ;;
 
+  # panevoice <pane> <voice> — set just this pane's Kokoro voice (no global change),
+  # and preview it. Used by the menu-bar player's per-pane Voice submenu.
+  panevoice)
+    p="${2:-}"; v="${3:-}"
+    [ -n "$p" ] && [ -n "$v" ] || { echo "usage: voice panevoice <pane> <voice>"; exit 2; }
+    mkdir -p "$PANEVOICE_DIR"; printf '%s' "$v" > "$PANEVOICE_DIR/$p"
+    echo "pane $p voice -> $v"
+    [ -x "$KOKORO_SAY" ] && "$KOKORO_SAY" "This is your new voice." "$v" "$VOICE_KOKORO_SPEED" ;;
+
   # help — one-screen cheatsheet.
   help)
     cat <<'H'
@@ -115,6 +127,7 @@ Voice & speed:
   voice use <name>             pick a voice
   voice speed 1.2              1.0 = normal, higher = faster
   voice pool on|off|<names…>   per-pane voices: a distinct voice per session
+  voice panevoice <pane> <v>   set one pane's voice (also in the menu-bar player)
 
   Cmd+Shift+/  this menu        config: ~/.claude/voice/config.sh
 H
@@ -185,5 +198,5 @@ H
     [ "$e" -gt 0 ] && _a "✗$e"; [ "$i" -gt 0 ] && _a "⏸$i"; [ "$r" -gt 0 ] && _a "✓$r"
     printf '%s\n' "$out" ;;
 
-  *) echo "usage: voice {help|voices|use|speed|pool|autospeak|auto|wait|toggle|status|stop|drain|recap|jump|attention}"; exit 2 ;;
+  *) echo "usage: voice {help|voices|use|panevoice|speed|pool|autospeak|auto|wait|toggle|status|stop|drain|recap|jump|attention}"; exit 2 ;;
 esac

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="470" viewBox="0 0 720 470" font-family="-apple-system, system-ui, 'Segoe UI', Roboto, sans-serif">
+  <rect width="720" height="470" rx="10" fill="#141418"/>
+  <rect x="10" y="10" width="700" height="450" rx="10" fill="#1c1c23" stroke="#2b2b34"/>
+
+  <!-- toolbar -->
+  <rect x="10" y="10" width="700" height="40" rx="10" fill="#1c1c23"/>
+  <rect x="10" y="40" width="700" height="10" fill="#1c1c23"/>
+  <text x="28" y="35" font-size="15" font-weight="700" fill="#12a367">Spit It Out</text>
+  <!-- voice picker pill -->
+  <rect x="470" y="18" width="150" height="24" rx="7" fill="#26262e"/>
+  <text x="482" y="34" font-size="12" fill="#eaeaf0">★ Heart · A</text>
+  <path d="M604 27 l6 0 l-3 5 z" fill="#8b8b98"/>
+  <!-- speed pill -->
+  <rect x="628" y="18" width="66" height="24" rx="7" fill="#26262e"/>
+  <text x="640" y="34" font-size="12" fill="#eaeaf0">1.0×</text>
+  <line x1="10" y1="50" x2="710" y2="50" stroke="#2b2b34"/>
+
+  <!-- left: rendered PDF page -->
+  <rect x="26" y="66" width="330" height="330" rx="4" fill="#ffffff"/>
+  <text x="46" y="100" font-size="13" font-weight="700" fill="#111">aloud — Sample Document</text>
+  <g font-size="10.5" fill="#333">
+    <text x="46" y="128">The morning fog had not yet lifted from the</text>
+    <text x="46" y="144">harbor when the first boats slipped out past</text>
+    <text x="46" y="160">the breakwater.</text>
+  </g>
+  <!-- highlighted (spoken) sentence on the page -->
+  <rect x="44" y="170" width="296" height="34" rx="3" fill="#12a36722"/>
+  <g font-size="10.5" fill="#111">
+    <text x="46" y="184">Gulls wheeled overhead, patient and unbothered,</text>
+    <text x="46" y="199">while the water turned from slate to silver.</text>
+  </g>
+  <g font-size="10.5" fill="#333">
+    <text x="46" y="226">Somewhere a bell rang twice, and the town</text>
+    <text x="46" y="242">began, slowly, to wake.</text>
+  </g>
+
+  <!-- divider -->
+  <rect x="360" y="66" width="6" height="330" rx="3" fill="#2b2b34"/>
+
+  <!-- right: teleprompter -->
+  <g text-anchor="middle">
+    <text x="536" y="150" font-size="12" fill="#5b5b66">the first boats slipped out past the breakwater.</text>
+    <!-- current sentence highlighted -->
+    <rect x="386" y="196" width="300" height="60" rx="8" fill="#12a3671f"/>
+    <text x="536" y="220" font-size="15" font-weight="600" fill="#eaeaf0">Gulls wheeled overhead, patient</text>
+    <text x="536" y="242" font-size="15" font-weight="600" fill="#eaeaf0">and unbothered,</text>
+    <text x="536" y="300" font-size="12" fill="#5b5b66">while the water turned from slate to silver.</text>
+  </g>
+
+  <!-- transport bar -->
+  <line x1="366" y1="360" x2="710" y2="360" stroke="#2b2b34"/>
+  <g transform="translate(508,384)" fill="#eaeaf0">
+    <!-- prev -->
+    <path d="M0 0 l-10 7 l10 7 z" fill="#8b8b98"/>
+    <rect x="-12" y="0" width="2" height="14" fill="#8b8b98"/>
+    <!-- play (accent circle) -->
+    <circle cx="30" cy="7" r="16" fill="#12a367"/>
+    <path d="M25 0 l11 7 l-11 7 z" fill="#0d0d10"/>
+    <!-- next -->
+    <path d="M62 0 l10 7 l-10 7 z" fill="#8b8b98"/>
+    <rect x="72" y="0" width="2" height="14" fill="#8b8b98"/>
+  </g>
+  <rect x="386" y="418" width="300" height="4" rx="2" fill="#2b2b34"/>
+  <rect x="386" y="418" width="150" height="4" rx="2" fill="#12a367"/>
+
+  <text x="20" y="450" font-size="11" fill="#6b6b78">Read-along PDF reader with grade-labelled voices. Illustration.</text>
+</svg>

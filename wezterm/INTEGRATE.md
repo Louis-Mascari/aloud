@@ -10,7 +10,7 @@ Fresh config with no `format-tab-title` / `update-status` of your own? Copy
 ### 1. Near the top, after `config`
 
 ```lua
-local VOICE_BIN = wezterm.home_dir .. '/claude-voice/bin/voice'
+local VOICE_BIN = wezterm.home_dir .. '/aloud/bin/voice'
 local VOICE_STATE_DIR = wezterm.home_dir .. '/.claude/voice/state'
 local VOICE_GLYPH = {  -- lights up only when done or needing you; colors are one theme's green/amber/red, swap for your own
   ready = { g = '✓', c = '#76946a' }, -- green: done

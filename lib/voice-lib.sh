@@ -26,8 +26,9 @@ VOICE_KOKORO_SPEED="${VOICE_KOKORO_SPEED:-1.0}"
 # Per-pane voices: give each pane its own Kokoro voice so concurrent sessions
 # are distinguishable by ear. Off = every pane uses VOICE_KOKORO_VOICE.
 VOICE_PANE_VOICES="${VOICE_PANE_VOICES:-false}"
-# Default pool = Kokoro's top-graded English voices (A to B-); curate with `voice pool`.
-VOICE_PANE_VOICE_POOL="${VOICE_PANE_VOICE_POOL:-af_heart af_bella af_nicole bf_emma}"
+# Default pool = clear, natural, easy-to-tell-apart voices (Kokoro grades A to C+);
+# curate with `voice pool`. Excludes stylized ones like af_nicole (🎧 whisper).
+VOICE_PANE_VOICE_POOL="${VOICE_PANE_VOICE_POOL:-af_heart af_bella bf_emma am_michael}"
 
 # true = speak on switch/finish; false = silent (never auto-speaks; you press a key).
 VOICE_AUTO_SPEAK="${VOICE_AUTO_SPEAK:-true}"

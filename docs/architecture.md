@@ -84,7 +84,8 @@ barge-in cuts a summary mid-way.
 
 Before synthesis the text is sanitized (`voice_sanitize`) to drop markup that reads
 badly aloud — code ticks, URLs, emphasis, table pipes. A turn that omits the 🔊 line
-still speaks a short "Done." rather than going silent. With `VOICE_PANE_VOICES=true`,
+is nudged once to re-send it, and otherwise speaks a sanitized tail of the real
+message (a bare "Done." only if the message body is empty) rather than going silent. With `VOICE_PANE_VOICES=true`,
 each pane draws a stable voice from a pool so concurrent sessions sound distinct.
 
 ## Portability

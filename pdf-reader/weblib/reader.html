@@ -391,17 +391,35 @@ const FLAG={a:'\u{1F1FA}\u{1F1F8}',b:'\u{1F1EC}\u{1F1E7}',e:'\u{1F1EA}\u{1F1F8}'
 const GENDER={f:'Female',m:'Male'};
 const GROUP_ORDER=['af','am','bf','bm','ef','em','ff','hf','hm','if','im','jf','jm','pf','pm','zf','zm'];
 const friendly=v=>v.slice(3).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+// Kokoro voice grades, copied from VOICES.md (huggingface.co/hexgrad/Kokoro-82M),
+// checked 2026-08-19. Grade estimates training-data quality + quantity, so higher
+// grades sound more natural. Not derivable at runtime (the model's get_voices()
+// returns ids only), so this static map can drift; refresh it from VOICES.md when
+// bumping the model. Voices absent here render without a grade.
+const GRADE={af_heart:'A',af_bella:'A-',bf_emma:'B-',af_nicole:'B-',ff_siwis:'B-',
+  af_kore:'C+',af_sarah:'C+',af_aoede:'C+',am_fenrir:'C+',am_michael:'C+',am_puck:'C+',
+  jf_alpha:'C+',am_echo:'D',am_eric:'D',am_liam:'D',am_onyx:'D'};
+const MARK={af_bella:'\u{1F525}',af_nicole:'\u{1F3A7}'}; // standout / headphone-tuned
+const RECOMMENDED=['af_heart','af_bella','bf_emma']; // A / A- / B- English, non-stylized
+const GRANK={'A+':0,A:1,'A-':2,'B+':3,B:4,'B-':5,'C+':6,C:7,'C-':8,'D+':9,D:10,F:11};
+const grank=v=>GRANK[GRADE[v]] ?? 50;                       // ungraded sort last
+const optLabel=v=>`${friendly(v)}${GRADE[v]?' · '+GRADE[v]:''}${MARK[v]?' '+MARK[v]:''}`;
+const opt=v=>`<option value="${v}">${optLabel(v)}</option>`;
 (async function initVoices(){
   try{
     const vs=await (await fetch('/voices')).json();
     const g={}; for(const v of vs){ (g[v.slice(0,2)]||(g[v.slice(0,2)]=[])).push(v); }
     let html='';
+    const rec=RECOMMENDED.filter(v=>vs.includes(v));       // shortcut group, best first
+    if(rec.length) html+=`<optgroup label="★ Recommended (most natural)">`+rec.map(opt).join('')+`</optgroup>`;
     for(const k of GROUP_ORDER){ if(!g[k]) continue;
+      const opts=g[k].slice().sort((a,b)=>grank(a)-grank(b)||a.localeCompare(b)); // grade, then name
       html+=`<optgroup label="${FLAG[k[0]]||''} ${LANG[k[0]]||k[0]} · ${GENDER[k[1]]||''}">`
-          + g[k].sort().map(v=>`<option value="${v}">${friendly(v)}</option>`).join('')
+          + opts.map(opt).join('')
           + `</optgroup>`;
     }
     const sel=$('#voice'); sel.innerHTML=html;
+    sel.title='Voice grade from Kokoro (A best, higher = more/better training data). Source: VOICES.md';
     sel.onchange=()=>fetch('/voice?v='+encodeURIComponent(sel.value),{method:'POST'}).then(r=>r.json()).then(render).catch(()=>{});
   }catch(e){}
 })();

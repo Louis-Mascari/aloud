@@ -5,21 +5,24 @@ your setup allows. Two automatic interrupts already work with no binding:
 - **Stop-on-send** — submitting a prompt stops speech (a Claude Code hook; every terminal, every OS).
 - **On switch** — moving to another pane stops the one you left (WezTerm).
 
-Replace `~/claude-voice/bin/voice` in each snippet below with the path to this repo's `bin/voice`.
+Replace `~/aloud/bin/voice` in each snippet below with the path to this repo's `bin/voice`.
 
 ## OS-global hotkey (fires no matter what's focused — most portable)
 
-**macOS — [skhd](https://github.com/koekeishiya/skhd)** (`brew install skhd && skhd --start-service`; grant Accessibility). `~/.config/skhd/skhdrc`:
+**macOS — [skhd](https://github.com/koekeishiya/skhd)** (`brew install koekeishiya/formulae/skhd && skhd --start-service`; grant skhd Accessibility, then `skhd --restart-service`). `~/.config/skhd/skhdrc`:
 ```
-cmd + alt - period : ~/claude-voice/bin/voice stop
+cmd + alt - period : ~/aloud/bin/voice stop
 ```
 Already run Hammerspoon? `~/.hammerspoon/init.lua`:
 ```lua
-hs.hotkey.bind({"cmd","alt"}, ".", function() hs.execute("~/claude-voice/bin/voice stop") end)
+hs.hotkey.bind({"cmd","alt"}, ".", function() hs.execute("~/aloud/bin/voice stop") end)
 ```
 
+Point the same binding at **`voice toggle`** instead (e.g. `cmd + alt - m`) for a
+global **mute** switch — silence everything from any app right before a meeting.
+
 **Linux — bind in your compositor/DE (Wayland-safe, no root):**
-- sway/Hyprland: `bindsym Ctrl+Shift+s exec ~/claude-voice/bin/voice stop`
+- sway/Hyprland: `bindsym Ctrl+Shift+s exec ~/aloud/bin/voice stop`
 - GNOME/KDE: Settings → Keyboard → Custom Shortcut → command `~/…/bin/voice stop`.
 - X11 only: sxhkd `super + shift + s` on one line, TAB-indented `~/…/bin/voice stop` on the next.
 
@@ -34,11 +37,11 @@ hs.hotkey.bind({"cmd","alt"}, ".", function() hs.execute("~/claude-voice/bin/voi
 **WezTerm** — already wired (`CMD+.`).
 **tmux** (`~/.tmux.conf`):
 ```
-bind-key -n F13 run-shell "~/claude-voice/bin/voice stop &"
+bind-key -n F13 run-shell "~/aloud/bin/voice stop &"
 ```
 **kitty** (`kitty.conf`):
 ```
-map f13 launch --type=background ~/claude-voice/bin/voice stop
+map f13 launch --type=background ~/aloud/bin/voice stop
 ```
 **Alacritty** (`alacritty.toml`):
 ```toml
@@ -53,10 +56,10 @@ bindings = [ { key = "F13", command = { program = "sh", args = ["-c", "~/…/bin
 viewer (or any app) is focused, bind `pdf-ctl` to OS-global hotkeys. Same tools as
 above. macOS **skhd** (`~/.config/skhd/skhdrc`):
 ```
-cmd + alt - space  : ~/claude-voice/bin/pdf-ctl toggle   # play/pause
-cmd + alt - right  : ~/claude-voice/bin/pdf-ctl next     # skip junk forward
-cmd + alt - left   : ~/claude-voice/bin/pdf-ctl prev
-cmd + alt - 0      : ~/claude-voice/bin/pdf-ctl stop
+cmd + alt - space  : ~/aloud/bin/pdf-ctl toggle   # play/pause
+cmd + alt - right  : ~/aloud/bin/pdf-ctl next     # skip junk forward
+cmd + alt - left   : ~/aloud/bin/pdf-ctl prev
+cmd + alt - 0      : ~/aloud/bin/pdf-ctl stop
 ```
 One stop for everything (summaries + reader): point your global stop key at a line
 that runs both `voice stop` and `pdf-ctl stop`.

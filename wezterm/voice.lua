@@ -96,7 +96,7 @@ local function badge_cells()
 end
 
 function M.apply(config, voice_bin)
-  local BIN = voice_bin or (wezterm.home_dir .. '/claude-voice/bin/voice')
+  local BIN = voice_bin or (wezterm.home_dir .. '/aloud/bin/voice')
 
   wezterm.on('format-tab-title', function(tab)
     local vg = tab.is_active and nil or GLYPH[tab_state(tab) or '']

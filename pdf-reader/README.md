@@ -8,6 +8,9 @@ other — with the spoken sentence highlighted and following along.
 Part of the [aloud](../README.md) collection; shares the Kokoro engine in
 [`../kokoro/`](../kokoro). Run [`../setup-kokoro.sh`](../setup-kokoro.sh) once first.
 
+<img src="../docs/media/pdf-readalong.svg" alt="Read-along reader: the PDF page beside a teleprompter with the spoken sentence highlighted, and a voice picker showing quality grades." width="680">
+<br><sub>Illustration.</sub>
+
 ## The app (no terminal)
 
 Build the **Spit It Out** desktop app once, then never touch the terminal:
@@ -24,6 +27,7 @@ Three ways to open a PDF with it:
 ## From a terminal
 
 ```bash
+pdf-read ~/aloud/pdf-reader/sample/aloud-sample.pdf   # try the included sample
 pdf-read ~/Downloads/paper.pdf          # whole document
 pdf-read ~/Downloads/paper.pdf 3-40     # pages 3–40 (skip cover, TOC, references)
 ```
@@ -38,7 +42,9 @@ Both open the same split-view reader in your browser.
   highlights on the page and the view follows it.
 - **Transport** — play/pause, skip back/forward, stop (keeps your place),
   slower/faster. Keys: **Space**, **←**, **→**. Skip-forward blows past junk.
-- **50+ voices** grouped by accent and gender; switch live.
+- **50+ voices** grouped by accent and gender, labelled with their Kokoro quality
+  grade where one is published (A is best), with a **★ Recommended** group of the
+  most natural voices up top; switch live.
 - **Per-pane zoom** — the PDF and the reader text zoom independently (buttons or
   ⌘-scroll on the PDF).
 - **Float** — pop the controls into an always-on-top mini window (Document

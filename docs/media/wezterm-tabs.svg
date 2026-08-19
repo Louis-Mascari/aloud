@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="360" viewBox="0 0 660 360" font-family="-apple-system, system-ui, 'Segoe UI', Roboto, sans-serif">
+  <rect width="660" height="360" rx="10" fill="#141418"/>
+  <!-- window -->
+  <rect x="12" y="12" width="636" height="336" rx="10" fill="#16161d" stroke="#2b2b34"/>
+  <!-- title bar -->
+  <rect x="12" y="12" width="636" height="30" rx="10" fill="#0d0d10"/>
+  <rect x="12" y="30" width="636" height="12" fill="#0d0d10"/>
+  <circle cx="32" cy="27" r="6" fill="#ff5f57"/>
+  <circle cx="52" cy="27" r="6" fill="#febc2e"/>
+  <circle cx="72" cy="27" r="6" fill="#28c840"/>
+
+  <!-- tab bar -->
+  <g font-size="12.5">
+    <!-- left status badge (needs-action counts) -->
+    <text x="26" y="62" fill="#c34043" font-weight="600">✗1</text>
+    <text x="48" y="62" fill="#e6c384" font-weight="600">⏸1</text>
+
+    <!-- active tab: no glyph -->
+    <rect x="78" y="48" width="150" height="24" rx="6" fill="#1c1c23"/>
+    <text x="90" y="64" fill="#eaeaf0">1· deploy-staging</text>
+
+    <!-- input (amber) -->
+    <text x="242" y="64" fill="#e6c384" font-weight="700">⏸</text>
+    <text x="258" y="64" fill="#8b8b98">2· pr-review</text>
+
+    <!-- ready (green) -->
+    <text x="360" y="64" fill="#76946a" font-weight="700">✓</text>
+    <text x="376" y="64" fill="#8b8b98">3· run-tests</text>
+
+    <!-- error (red) -->
+    <text x="482" y="64" fill="#c34043" font-weight="700">✗</text>
+    <text x="498" y="64" fill="#8b8b98">4· fix-login</text>
+  </g>
+  <line x1="12" y1="80" x2="648" y2="80" stroke="#2b2b34"/>
+
+  <!-- terminal body -->
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="13">
+    <text x="30" y="112" fill="#76946a">~/demo</text>
+    <text x="86" y="112" fill="#8b8b98">$</text>
+    <text x="100" y="112" fill="#eaeaf0">claude</text>
+    <text x="30" y="140" fill="#6b6b78"># Each tab lights up on its own: amber when Claude needs you,</text>
+    <text x="30" y="160" fill="#6b6b78"># green when a turn finished, red on an error.</text>
+    <text x="30" y="188" fill="#6b6b78"># The badge on the left counts only tabs that need an action.</text>
+    <text x="30" y="224" fill="#12a367">✓ 3· run-tests</text>
+    <text x="150" y="224" fill="#8b8b98">finished — press ⌘⇧V to hear its recap</text>
+    <text x="30" y="248" fill="#e6c384">⏸ 2· pr-review</text>
+    <text x="150" y="248" fill="#8b8b98">waiting on you — ⌘⇧J jumps there and reads it</text>
+  </g>
+
+  <text x="20" y="340" font-size="11" fill="#6b6b78">WezTerm tab glyphs + attention badge. Illustration.</text>
+</svg>

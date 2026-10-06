@@ -102,7 +102,8 @@ voice_is_focused() {
 }
 
 # Atomic writes (tmp + rename) so a WezTerm reader never sees a torn/empty file.
-_voice_put()        { [ -n "$1" ] && { printf '%s' "$3" > "$2/$1.tmp.$$" && mv "$2/$1.tmp.$$" "$2/$1"; }; }
+# The tmp name is a dotfile so a write killed before its rename stays out of `dir/*` globs.
+_voice_put()        { [ -n "$1" ] && { printf '%s' "$3" > "$2/.$1.tmp.$$" && mv "$2/.$1.tmp.$$" "$2/$1"; }; }
 voice_set_state()   { _voice_put "$1" "$STATE_DIR" "$2"; }
 voice_set_task()    { _voice_put "$1" "$TASK_DIR" "$2"; }
 voice_set_last()    { _voice_put "$1" "$LAST_DIR" "$2"; }

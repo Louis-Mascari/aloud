@@ -192,7 +192,7 @@ H
   jump)
     best=""; bestrank=0
     for f in "$STATE_DIR"/*; do
-      [ -e "$f" ] || continue
+      case "${f##*/}" in ''|*[!0-9]*) continue;; esac   # pane ids only
       r=$(voice_rank "$(cat "$f" 2>/dev/null)")
       [ "$r" -gt "$bestrank" ] && { bestrank=$r; best="${f##*/}"; }
     done
@@ -206,9 +206,12 @@ H
   # attention — compact count of panes needing you, for the status bar / CLI.
   attention)
     e=0; i=0; r=0
+    # Runs every few seconds from the menu bar, so: pane ids only, and `read` instead of a
+    # cat subshell per file (thousands of leaked tmp files once meant thousands of processes per poll).
     for f in "$STATE_DIR"/*; do
-      [ -e "$f" ] || continue
-      case "$(cat "$f" 2>/dev/null)" in error) e=$((e+1));; input) i=$((i+1));; ready) r=$((r+1));; esac
+      case "${f##*/}" in ''|*[!0-9]*) continue;; esac
+      st=""; read -r st < "$f" 2>/dev/null
+      case "$st" in error) e=$((e+1));; input) i=$((i+1));; ready) r=$((r+1));; esac
     done
     out=""   # concatenate only; bash 3.2 corrupts multibyte in ${var%...} under a UTF-8 locale
     _a() { [ -z "$out" ] && out="$1" || out="$out $1"; }

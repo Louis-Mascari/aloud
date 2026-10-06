@@ -4,5 +4,5 @@
 # fires on every tool call.
 p="${WEZTERM_PANE:-}"; [ -n "$p" ] || exit 0
 d="${VOICE_DIR:-$HOME/.claude/voice}/state"
-mkdir -p "$d" && printf working > "$d/$p.tmp.$$" && mv "$d/$p.tmp.$$" "$d/$p"
+mkdir -p "$d" && printf working > "$d/.$p.tmp.$$" && mv "$d/.$p.tmp.$$" "$d/$p"
 exit 0
